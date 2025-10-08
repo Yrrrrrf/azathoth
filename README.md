@@ -1,23 +1,50 @@
-# Azathoth
+<h1 align="center">
+  <img src="assets/img/abstract-shape.png" alt="Azathoth Icon" width="128" height="128">
+  <div align="center">Azathoth</div>
+</h1>
 
-My personal AI architect and development partner, designed to enforce high-level coding standards and automate complex workflows.
+<div align="center">
 
-Azathoth is not just a tool; it's an opinionated AI agent framework. It serves as a collection of specialized MCP (Master Control Program) servers that encapsulate a specific, high-level development philosophy
+<!-- CORE BADGES -->
+[![GitHub: Repo](https://img.shields.io/badge/GitHub-Azathoth-58A6FF?style=for-the-badge&logo=github)](https://github.com/Yrrrrrf/Azathoth)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](./LICENSE)
 
-Azathoth is the production-ready assistant. Its purpose is to act as an omnipotent partner in the development process, ensuring that every piece of code and every workflow adheres to a predefined set of best practices and personal standards.
+<!-- INFORMATIONAL BADGES -->
+[![Made with Python](https://img.shields.io/badge/made%20with-Python-blue.svg?style=for-the-badge&logo=python)](https://www.python.org/)
+[![Made with Rust](https://img.shields.io/badge/made%20with-Rust-orange.svg?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
 
-## Core Features
+</div>
 
-This repository provides a suite of standalone servers that can be integrated with any MCP-compatible AI agent or CLI.
+> My personal AI architect and development partner, designed to enforce high-level coding standards and automate complex workflows.
 
-🧠 Dynamic AI Directives (directives.py): Configure the core behavior of your AI assistant on the fly. Load master prompts for your core development philosophy, technology-specific mandates (e.g., Svelte 5 with Runes), or modes like the "Proactive Advisor."
+Azathoth is not just a tool; it's an opinionated AI agent framework. It serves as a collection of specialized MCP (Master Control Program) servers that encapsulate a specific, high-level development philosophy.
 
-🧭 Autonomous Code Analysis (scout.py): An intelligent agent that can explore a codebase, identify its language and stack, adapt to your preferred coding style for that language, and generate a comprehensive high-level report.
+> **Note:** Azathoth is the production-ready assistant, ensuring that every piece of code and every workflow adheres to predefined best practices and personal standards.
 
-🚀 Intelligent Git Workflows (workflow.py): Automate common Git tasks with AI-powered context. Includes tools for analyzing staged changes to generate conventional commit messages (autocommit) and for creating detailed, well-formatted GitHub releases (autorelease).
+## 🚦 Getting Started
 
-🦀 Polyglot Foundation (Python & Rust): Core tooling is provided in both Python (mcp-py/) for rapid development and Rust (mcp-rs/) for performance-critical tasks, all managed within a unified workspace.
+### Installation
 
-## License
+This project uses both Python and Rust dependencies. For Python dependencies:
+
+```sh
+uv sync
+```
+
+For Rust dependencies:
+
+```sh
+cargo build --release
+```
+
+### Quick Start
+
+The Azathoth project provides a suite of standalone servers that can be integrated with any MCP-compatible AI agent or CLI:
+
+1. **Dynamic AI Directives (directives.py):** Configure the core behavior of your AI assistant on the fly.
+2. **Autonomous Code Analysis (scout.py):** An intelligent agent that can explore a codebase and generate a comprehensive report.
+3. **Intelligent Git Workflows (workflow.py):** Automate common Git tasks with AI-powered context.
+
+## 📄 License
 
 This project is licensed under the **MIT License**. See the [LICENSE](./LICENSE) file for details.

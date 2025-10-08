@@ -35,9 +35,8 @@ lto = true     # link-time optimizations for better runtime performance
 [workspace.dependencies]
 
 # Internal crates
-# axion-db = { workspace = true }
-# axion-server = { workspace = true }
-# axion-macros = { workspace = true } # Keep optional if it's a feature
+# azathoth-core = { workspace = true }
+# azathoth-macros = { workspace = true } # Keep optional if it's a feature
 
 # Web framework and HTTP utilities
 axum = "0.8.6"

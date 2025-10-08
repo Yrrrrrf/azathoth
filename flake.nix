@@ -1,5 +1,5 @@
 {
-  description = "Development environment for assembly programming and Python tools";
+  description = "Development environment for MCP for Rust and Python (via uv)";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -13,11 +13,11 @@
       packages = [
         pkgs.cargo
         pkgs.uv
-        (pkgs.writeShellScriptBin "run-asm" (builtins.readFile ./src/run-asm.sh))
       ];
       shellHook = ''
-        echo "Welcome to the assembly and Python development environment!"
-        echo "You can use 'run-asm <source_file>' to assemble and run assembly code."
+        echo "Welcome to the MCP development environment!"
+        echo "You can run 'cargo build' to build the Rust project."
+        echo "You can run 'uv' to use the uv tool."
       '';
     };
   };

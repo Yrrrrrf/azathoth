@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.100"
-async-trait = "0.1.83"
+async-trait = "0.1.89"
 project-root = "0.2.2"
 rmcp = { version = "0.8.0", features = ["transport-io"] }
 schemars = "1.0.4"

@@ -56,6 +56,21 @@ impl ServerHandler for SimpleMcpServer {
     }
 }
 
+/// Example `launch.json` configuration for VSCode to run this example:
+
+//
+/// "main-rs-example": {
+///     "command": "cargo",
+///     "args": ["run",
+///     "--example",
+///     "main_tester",
+///     "--release"
+///   ],
+///     "cwd": "/home/yrrrrrf/docs/lab/azathoth/mcp-rs",
+///     // Wait 30 secs because it could take a bit to compile
+///     "timeout": 30000
+/// },
+
 // --- Main function to run the server ---
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

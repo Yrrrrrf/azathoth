@@ -3,13 +3,14 @@ name = "azathoth"
 authors = [
 	{ name = "Fernando Bryan Reza Campos", email = "fer.rezac@outlook.com" },
 ]
-version = "0.1.0"
+version = "0.0.1"
 description = "Some of the stuff I've created while learning the 'State of the Art' in AI."
 requires-python = ">=3.12"
 readme = "README.md"
 license = { file = "LICENSE" }
 keywords = [
-	"ai", 
+	"ai",
+	"mcp",
 	"deep learning"
 	]
 dependencies = [
@@ -22,6 +23,7 @@ dependencies = [
 	"httpx>=0.28.1",
 	"gitingest>=0.3.1",
 	"rich>=14.1.0",
+	"rune-lib>=0.0.4",
 ]
 
 # Not necessary, I will need to add them if I sometime publish this as a package
