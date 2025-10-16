@@ -2,13 +2,13 @@
 tags:
   - meta-prompt
 ---
-### **AI DIRECTIVE: Standardized README Generation Guide**
+# **AI DIRECTIVE: Standardized README Generation Guide**
 
 **Objective:** To generate a high-quality, professional, and visually consistent `README.md` for any given project. This guide outlines the mandatory structure, component patterns, and stylistic choices that define my personal development brand. You MUST adhere to these principles.
 
 ---
 
-### **Core Philosophy**
+## **Core Philosophy**
 
 Every README must achieve three goals:
 1.  **Establish a Strong Visual Identity:** Immediately brand the project with a consistent header and badge style.
@@ -17,21 +17,21 @@ Every README must achieve three goals:
 
 ---
 
-### **Mandatory Structure & Components**
+## **Mandatory Structure & Components**
 
 A README file MUST be composed of the following sections in this exact order:
 
-1.  **Header Block (`<h1>`)**
-2.  **Badge Cluster (`<div>`)**
-3.  **Overview Paragraph**
-4.  **Getting Started Section (`## 🚦 Getting Started`)**
-5.  **License Section (`## 📄 License`)**
+1. [Header Block (`<h1>`)](#the-header-block)
+2. [Badge Cluster (`<div>`)](#the-badge-cluster)
+3. [Overview](#the-overview)
+4. [Getting Started Section (`## 🚦 Getting Started`)](#getting-started)
+5. [License Section (`## 📄 License`)](#the-license-section)
 
 ---
 
-### **Component Breakdown & Guidelines**
+## **Component Breakdown & Guidelines**
 
-#### The Header Block
+### The Header Block
 
 This is the project's visual signature. It MUST be a centered `<h1>` block containing two elements:
 - A `128x128` project icon (`<img>`).
@@ -45,7 +45,7 @@ This is the project's visual signature. It MUST be a centered `<h1>` block conta
 </h1>
 ```
 
-#### The Badge Cluster
+### The Badge Cluster
 
 Directly following the header, there MUST be a centered `<div>` containing a collection of relevant badges. The preferred style is `style=for-the-badge`.
 
@@ -68,27 +68,34 @@ Directly following the header, there MUST be a centered `<div>` containing a col
 <div align="center">
 
 <!-- CORE BADGES (Pick ONE GitHub style) -->
-[![GitHub: Repo](https://img.shields.io/badge/GitHub-RepoName-58A6FF?style=for-the-badge&logo=github)](https://github.com/Yrrrrrf/RepoName)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](./LICENSE)
+[![GitHub: Repo](https://img.shields.io/badge/RepoName-58A6FF?&logo=github)](https://github.com/Yrrrrrf/RepoName)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](./LICENSE)
 
 <!-- PACKAGE MANAGER BADGES (Include all that apply) -->
-[![Crates.io](https://img.shields.io/crates/v/crate-name.svg?style=for-the-badge&logo=rust)](https://crates.io/crates/crate-name)
-[![Crates.io Downloads](https://img.shields.io/crates/d/crate-name?style=for-the-badge)](https://crates.io/crates/crate-name)
-[![PyPI version](https://img.shields.io/pypi/v/pypi-name?style=for-the-badge&logo=python)](https://pypi.org/project/pypi-name/)
-[![PyPI Downloads](https://img.shields.io/pypi/dm/pypi-name?style=for-the-badge)](https://pypi.org/project/pypi-name/)
-[![JSR](https://jsr.io/badges/@yrrrrrf/pkg-name?style=for-the-badge)](https://jsr.io/@yrrrrrf/pkg-name)
-[![NPM](https://img.shields.io/npm/v/npm-name?style=for-the-badge)](https://www.npmjs.com/package/npm-name)
 
+<!-- Rust based projects -->
+[![Crates.io](https://img.shields.io/crates/v/RepoName.svg?logo=rust)](https://crates.io/crates/RepoName)
+[![Crates.io Downloads](https://img.shields.io/crates/d/RepoName)](https://crates.io/crates/RepoName)
+[![docs.rs](https://img.shields.io/badge/docs.rs-RepoName-66c2a5)](https://docs.rs/RepoName)
 
-<!-- OTHER USEFUL BADGES (Optional) -->
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg?style=for-the-badge)](https://github.com/Yrrrrrf/RepoName/releases)
-[![docs.rs](https://img.shields.io/badge/docs.rs-crate--name-66c2a5?style=for-the-badge&labelColor=555555)](https://docs.rs/crate-name)
-[![Made with Rust](https://img.shields.io/badge/made%20with-Rust-orange.svg?style=for-the-badge)](https://www.rust-lang.org/)
+<!-- Python based projects -->
+[![PyPI version](https://img.shields.io/pypi/v/RepoName)](https://pypi.org/project/RepoName/)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/RepoName)](https://pypi.org/project/RepoName/)
+
+<!-- Web based projects -->
+[![JSR](https://jsr.io/badges/@yrrrrrf/RepoName)](https://jsr.io/@yrrrrrf/RepoName)
+[![NPM](https://img.shields.io/npm/v/RepoName)](https://www.npmjs.com/package/RepoName)
+[![NPM Downloads](https://img.shields.io/npm/dt/RepoName)](https://www.npmjs.com/package/RepoName)
+[![JSR Version](https://jsr.io/badges/@yrrrrrf/RepoName/score)](https://jsr.io/@yrrrrrf/RepoName)
+
+<!-- Optional ones -->
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/Yrrrrrf/RepoName/releases)
+<!-- metacomment: Add some build status badge -->
 
 </div>
 ```
 
-#### The Overview
+### The Overview
 
 This section MUST begin with a concise, one-sentence summary of the project's purpose, often in a blockquote. It should be followed by a short paragraph (2-3 sentences) expanding on the core concept, its technology, or its place within a larger ecosystem.
 
@@ -96,20 +103,22 @@ This section MUST begin with a concise, one-sentence summary of the project's pu
 ```markdown
 > A Python library for zero-configuration, OS-independent asset management.
 
-Rune is a Python library designed to automatically discover and provide an intuitive API to access project files, eliminating the need for hardcoded relative paths.
+`RepoName` is a Python library designed to automatically discover and provide an intuitive API to access project files, eliminating the need for hardcoded relative paths.
 
 > **Note:** This library is part of the Prism ecosystem, designed to create a seamless bridge between your database and client applications.
 ```
 
-## 🚦 Getting Started
+### Getting Started
 
-### Installation
+```markdown
+## Installation
 
-```sh
-uv add <package-name>
+<!-- Add the installation commands for your package manager of choice -->
+The preferred installation method is:
+<!-- metacomment: Add installation commands for each package manager -->
 ```
 
-### Quick Start
+#### Quick Start
 
 Here's a minimal example to get you started:
 
@@ -118,7 +127,7 @@ from <package-name> import <something>
 # Implementation example code here
 ```
 
-#### The License Section
+### The License Section
 
 The final section MUST be titled `## 📄 License`. It must contain a clear statement identifying the license and a link to the `LICENSE` file in the repository.
 
