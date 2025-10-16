@@ -1,3 +1,4 @@
+use paste::paste;
 use rmcp::{
     ErrorData as McpError, ServerHandler, ServiceExt,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
@@ -7,6 +8,74 @@ use rmcp::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+// --- Define the macro for generating directive-related code ---
+macro_rules! define_directives {
+    ($($lang:ident ($($alias:literal),*) => $content:tt),+ $(,)?) => {
+        // --- LanguageGuide Enum ---
+        #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+        #[serde(rename_all = "camelCase")]
+        pub enum LanguageGuide {
+            $($lang),+
+        }
+
+        impl LanguageGuide {
+            pub fn from_string(s: &str) -> Option<Self> {
+                match s.to_lowercase().as_str() {
+                    $(
+                        stringify!($lang) | $($alias)|* => Some(Self::$lang),
+                    )+
+                    _ => None,
+                }
+            }
+        }
+
+        // --- Guidance Functions for each language ---
+        $(
+            paste! {
+                pub fn [<get_ $lang:lower _guidance>]() -> String {
+                    define_directives!(@content $lang $content).to_string()
+                }
+            }
+        )+
+
+        // --- Main get_guidance function ---
+        pub fn get_guidance(lang: LanguageGuide) -> String {
+            match lang {
+                $(
+                    LanguageGuide::$lang => paste! { [<get_ $lang:lower _guidance>]() },
+                )+
+            }
+        }
+    };
+    // --- Content handlers for the macro ---
+    (@content $lang:ident {auto($lang_name:literal, [$($ext:literal),*])}) => {
+        concat!(
+            $(
+                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../assets/meta-prompt/d-", $lang_name, ".", $ext)),
+                "\n"
+            ),*
+        )
+    };
+    (@content $lang:ident {$str:literal}) => {
+        $str
+    };
+    (@content $lang:ident {$($file:tt)*}) => {
+        include_str!($($file)*)
+    };
+}
+
+// --- Define the languages, their aliases, and the content to be served ---
+define_directives! {
+    Go("golang") => {"Go guidance placeholder"},
+    Python("py") => {auto("python", ["md", "py"])},
+    Rust("rs") => {"Rust guidance placeholder"},
+    C("cpp", "c++", "objc", "objective-c") => {"C-based languages guidance placeholder"},
+    Web("javascript", "js", "typescript", "ts", "html", "css", "svelte", "react", "vue") => {"Web technologies guidance placeholder"},
+    Kotlin("java", "kt") => {"Kotlin guidance placeholder"},
+    Container("docker", "podman", "dockerfile") => {"Container technologies guidance placeholder"},
+    SystemTool("system", "tool", "rg", "ripgrep", "eza", "fd", "fzf", "bat", "exa") => {"System tools guidance placeholder"}
+}
 
 // --- Define the parameters for our directive tools ---
 #[derive(Serialize, Deserialize, JsonSchema)]
@@ -31,38 +100,6 @@ impl Default for DirectivesMcpServer {
     }
 }
 
-// --- Language guide enum for all technology categories ---
-#[derive(Debug, Clone, PartialEq)]
-enum LanguageGuide {
-    Go,
-    Python,
-    Rust,
-    C,
-    Web,
-    Kotlin,
-    Container,
-    SystemTool,
-}
-
-impl LanguageGuide {
-    fn from_string(s: &str) -> Option<Self> {
-        match s.to_lowercase().as_str() {
-            "go" | "golang" => Some(LanguageGuide::Go),
-            "python" | "py" => Some(LanguageGuide::Python),
-            "rust" | "rs" => Some(LanguageGuide::Rust),
-            "c" | "cpp" | "c++" | "objc" | "objective-c" => Some(LanguageGuide::C),
-            "web" | "javascript" | "js" | "typescript" | "ts" | "html" | "css" | "svelte"
-            | "react" | "vue" => Some(LanguageGuide::Web),
-            "java" | "kotlin" | "kt" => Some(LanguageGuide::Kotlin),
-            "container" | "docker" | "podman" | "dockerfile" => Some(LanguageGuide::Container),
-            "system" | "tool" | "rg" | "ripgrep" | "eza" | "fd" | "fzf" | "bat" | "exa" => {
-                Some(LanguageGuide::SystemTool)
-            }
-            _ => None,
-        }
-    }
-}
-
 // --- Define the tools ---
 #[tool_router]
 impl DirectivesMcpServer {
@@ -81,19 +118,7 @@ impl DirectivesMcpServer {
         let language = &params.0.language;
 
         match LanguageGuide::from_string(language) {
-            Some(lang_guide) => {
-                let guidance = match lang_guide {
-                    LanguageGuide::Go => self.get_go_guidance(),
-                    LanguageGuide::Python => self.get_python_guidance(),
-                    LanguageGuide::Rust => self.get_rust_guidance(),
-                    LanguageGuide::C => self.get_c_guidance(),
-                    LanguageGuide::Web => self.get_web_guidance(),
-                    LanguageGuide::Kotlin => self.get_kotlin_guidance(),
-                    LanguageGuide::Container => self.get_container_guidance(),
-                    LanguageGuide::SystemTool => self.get_system_tool_guidance(),
-                };
-                Ok(guidance)
-            }
+            Some(lang_guide) => Ok(get_guidance(lang_guide)),
             None => Ok(format!(
                 "No specific guidance available for language: {}. Using general development philosophy.",
                 language
@@ -122,39 +147,6 @@ impl DirectivesMcpServer {
             result.push_str("\n\n---\n\n");
         }
         Ok(result)
-    }
-
-    // Individual guidance methods will be implemented in later phases
-    fn get_go_guidance(&self) -> String {
-        "Go guidance placeholder".to_string()
-    }
-
-    fn get_python_guidance(&self) -> String {
-        "Python guidance placeholder".to_string()
-    }
-
-    fn get_rust_guidance(&self) -> String {
-        "Rust guidance placeholder".to_string()
-    }
-
-    fn get_c_guidance(&self) -> String {
-        "C-based languages guidance placeholder".to_string()
-    }
-
-    fn get_web_guidance(&self) -> String {
-        "Web technologies guidance placeholder".to_string()
-    }
-
-    fn get_kotlin_guidance(&self) -> String {
-        "Kotlin guidance placeholder".to_string()
-    }
-
-    fn get_container_guidance(&self) -> String {
-        "Container technologies guidance placeholder".to_string()
-    }
-
-    fn get_system_tool_guidance(&self) -> String {
-        "System tools guidance placeholder".to_string()
     }
 }
 
