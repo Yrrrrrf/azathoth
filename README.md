@@ -8,6 +8,7 @@
 <!-- CORE BADGES -->
 [![GitHub: Repo](https://img.shields.io/badge/GitHub-Azathoth-58A6FF?style=for-the-badge&logo=github)](https://github.com/Yrrrrrf/Azathoth)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](./LICENSE)
+[![Version](https://img.shields.io/badge/version-0.0.1-blue.svg?style=for-the-badge)](https://github.com/Yrrrrrf/Azathoth/releases)
 
 <!-- INFORMATIONAL BADGES -->
 [![Made with Python](https://img.shields.io/badge/made%20with-Python-blue.svg?style=for-the-badge&logo=python)](https://www.python.org/)
@@ -57,9 +58,9 @@ scout
 workflow
 ```
 
-To run the rust examples:
+To run the rust examples from the `mcp_rs` package:
 ```sh
-cargo run --example <example_name>
+cargo run --package mcp-rs --example <example_name>
 ```
 
 ## 📄 License
