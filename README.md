@@ -6,13 +6,18 @@
 <div align="center">
 
 <!-- CORE BADGES -->
-[![GitHub: Repo](https://img.shields.io/badge/GitHub-Azathoth-58A6FF?style=for-the-badge&logo=github)](https://github.com/Yrrrrrf/Azathoth)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-0.0.1-blue.svg?style=for-the-badge)](https://github.com/Yrrrrrf/Azathoth/releases)
+[![GitHub: Repo](https://img.shields.io/badge/Azathoth-58A6FF?&logo=github)](https://github.com/Yrrrrrf/Azathoth)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)](https://github.com/Yrrrrrf/Azathoth/releases)
 
-<!-- INFORMATIONAL BADGES -->
-[![Made with Python](https://img.shields.io/badge/made%20with-Python-blue.svg?style=for-the-badge&logo=python)](https://www.python.org/)
-[![Made with Rust](https://img.shields.io/badge/made%20with-Rust-orange.svg?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
+<!-- Rust based projects -->
+[![Crates.io](https://img.shields.io/crates/v/mcp-rs.svg&logo=rust)](https://crates.io/crates/azathoth)
+[![Crates.io Downloads](https://img.shields.io/crates/d/azathoth.svg)](https://crates.io/crates/azathoth)
+[![docs.rs](https://img.shields.io/badge/docs.rs-azathoth-66c2a5.svg)](https://docs.rs/azathoth)
+
+<!-- Python based projects -->
+<!-- [![PyPI version](https://img.shields.io/pypi/v/mcp-py.svg)](https://pypi.org/project/mcp-py/)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/mcp-py.svg)](https://pypi.org/project/mcp-py/) -->
 
 </div>
 

@@ -7,7 +7,7 @@ package.version = "0.0.1"
 package.edition = "2024"
 package.license = "MIT"
 package.readme = "README.md"
-package.keywords = ["ai", "mcp", "deep learning"]
+package.keywords = ["ai", "mcp"]
 
 members = [
     "src/azathoth",
