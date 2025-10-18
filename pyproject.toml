@@ -1,5 +1,5 @@
 [project]
-name = "mcp-py"
+name = "azathoth"
 authors = [
 	{ name = "Fernando Bryan Reza Campos", email = "fer.rezac@outlook.com" },
 ]
@@ -14,36 +14,42 @@ keywords = [
 	"deep learning"
 ]
 dependencies = [
-	# Logging
-	"rich>=14.2.0",
-	"rune-lib>=0.0.4",
+	"rich>=14.2.0",  # logging tool
+	"rune-lib>=0.0.4",  # asset manager
 	# * MCP
 	"mcp[cli]>=1.17.0",
 ]
 
-# # Not necessary, I will need to add them if I sometime publish this as a package
-# ignore = [
-# # rust related stuff
-# 	"uv.lock",
-# 	"Cargo.toml",
-# 	"Cargo.lock",
-# 	".github",
-# 	"azathoth-core/*",
-# 	"azathoth-macros/*",
-# ]
+[tool.uv.workspace]
+members = [
+	"src/mcp_py*",
+	"src/azathoth/*.py",
+]
+exclude = [
+	# pkg related
+	"*.lock",
+	"dist",
+	"flake.*",
 
-# [tool.uv.workspace]
-# members = [
-#     "mcp-py",
-# ]
+	# rust related stuff
+	"Cargo.toml",
+	"target",
+]
 
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
 
 [project.scripts]
-main-tester = "mcp_py:main"
-# cli = "mcp_py.cli:main"
+azathoth = "azathoth:main"
+# cli = "azathoth.cli:main"
+
+mcpy-py = "mcp_py:main"
+main-tester = "mcp_py.examples.main_tester:main"
+
+# * python mcp scripts
+scout = "mcp_py.scout:main"
+workflow = "mcp_py.workflow:main"
 
 [build-system]
 requires = ["uv_build>=0.8.19,<0.9.0"]

@@ -9,7 +9,7 @@ delivering its high-level insights and summaries.
 """
 
 from mcp.server.fastmcp import FastMCP
-from lib.prompt_loader import prompt_loader
+from mcp_py.lib.prompt_loader import prompt_loader
 
 # --- Server Definition ---
 

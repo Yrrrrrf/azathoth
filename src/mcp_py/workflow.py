@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from lib.prompt_loader import prompt_loader
+from mcp_py.lib.prompt_loader import prompt_loader
 from mcp.server.fastmcp import FastMCP
 
 # --- Server Definition ---

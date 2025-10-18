@@ -16,5 +16,8 @@ wheels/
 # rust related
 **/target/
 
+# Project related
 # private files
 .env
+# nix env
+flake.lock

@@ -1,3 +1,4 @@
+use paste::paste;
 use rmcp::{
     ErrorData as McpError, ServerHandler, ServiceExt,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
@@ -48,10 +49,10 @@ macro_rules! define_directives {
         }
     };
     // --- Content handlers for the macro ---
-    (@content $lang:ident {auto($lang_name:literal, [$($ext:literal),*])}) => {
+    (@content $lang:ident {$lang_name:literal, [$($ext:literal),*]}) => {
         concat!(
             $(
-                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../assets/meta-prompt/d-", $lang_name, ".", $ext)),
+                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/meta-prompt/d-", $lang_name, ".", $ext)),
                 "\n"
             ),*
         )
@@ -66,8 +67,10 @@ macro_rules! define_directives {
 
 // --- Define the languages, their aliases, and the content to be served ---
 define_directives! {
+    // LANGUAGE (ALIASES) => CONTENT
+    //* Lang(alias) => {file_path} or {"string content"} or {lang_name, [ext1, ext2]}
     Go("golang") => {"Go guidance placeholder"},
-    Python("py") => {auto("python", ["md", "py"])},
+    Python("py") => {"python", ["md", "py"]},
     Rust("rs") => {"Rust guidance placeholder"},
     C("cpp", "c++", "objc", "objective-c") => {"C-based languages guidance placeholder"},
     Web("javascript", "js", "typescript", "ts", "html", "css", "svelte", "react", "vue") => {"Web technologies guidance placeholder"},

@@ -1,8 +1,16 @@
 # axion/Cargo.toml (Main workspace manifest)
 
 [workspace]
+# meta info
+package.authors = ["Fernando Bryan Reza Campos <fer.rezac@outlook.com>"]
 package.version = "0.0.1"
+package.edition = "2024"
+package.license = "MIT"
+package.readme = "README.md"
+package.keywords = ["ai", "mcp", "deep learning"]
+
 members = [
+    "src/azathoth",
     "src/mcp_rs",
     # "azathoth-core",
     # "azathoth-macros"
@@ -13,9 +21,6 @@ exclude = [
     "mcp-py",
     "pyproject.toml",
     "uv.lock",
-    # ".github",
-    # "azathoth-core/*",
-    # "azathoth-macros/*",
 ]
 
 # ignore some of the directories...
@@ -33,6 +38,3 @@ lto = true     # link-time optimizations for better runtime performance
 
 # WORKSPACE DEPENDENCIES ---------------------------------------------------------------------
 [workspace.dependencies]
-
-# Date/time utilities
-chrono = { version = "0.4.42", features = ["serde"] }
