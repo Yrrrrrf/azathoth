@@ -3,7 +3,7 @@
 [workspace]
 package.version = "0.0.1"
 members = [
-    "mcp-rs",
+    "src/mcp_rs",
     # "azathoth-core",
     # "azathoth-macros"
 ]
@@ -34,62 +34,5 @@ lto = true     # link-time optimizations for better runtime performance
 # WORKSPACE DEPENDENCIES ---------------------------------------------------------------------
 [workspace.dependencies]
 
-# Internal crates
-# azathoth-core = { workspace = true }
-# azathoth-macros = { workspace = true } # Keep optional if it's a feature
-
-# Web framework and HTTP utilities
-axum = "0.8.6"
-tower = "0.5.2"
-tower-http = { version = "0.6.6", features = ["cors", "trace", "fs"] }
-
-# Async utilities
-hyper = { version = "1.7.0", features = ["full"] } # Keep "full" or ensure "http1", "client" are enabled
-
-# Add "client-legacy" feature for HttpConnector used in the example
-hyper-util = { version = "0.1.17", features = ["http1", "http2", "client", "client-legacy", "tokio"] } # Add client-legacy and tokio
-
-tokio = { version = "1.47.1", features = ["full"] } # "full" is fine for the example
-async-trait = "0.1.89"
-futures = "0.3.31"
-
-# Database connectivity
-sqlx = { version = "0.8.6", features = ["any", "runtime-tokio-rustls", "postgres", "macros", "json", "uuid", "chrono", "time", "rust_decimal", "bigdecimal", "ipnetwork", "ipnet", "mac_address"] }
-
-# Serialization and data handling
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.145"
-uuid = { version = "1.18.1", features = ["v4", "serde"] }
-
-# Error handling
-anyhow = "1.0.100"
-thiserror = "2.0.17"
-
 # Date/time utilities
 chrono = { version = "0.4.42", features = ["serde"] }
-
-# Logging and tracing
-tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
-
-# Proc macro utilities (for the macros crate)
-syn = "2.0.106"
-quote = "1.0.41"
-proc-macro2 = "1.0.101"
-
-# Testing utilities
-pretty_assertions = "1.4.1"
-tokio-test = "0.4.4"
-
-reqwest = { version = "0.12.23", features = ["json"] } # For testing, if needed
-
-# Bytes & Dev Utils (Already present)
-bytes = { version = "1.10.1" } # Version looks slightly different from axion/Cargo.toml, workspace takes precedence
-dev_utils = "0.1.4" # Make sure this path/version is correct
-
-# --> ADD THESE FOR THE EXAMPLE <--
-http-body-util = "0.1.3" # Or latest 0.1.x version
-rustls = { version = "0.23.32"}
-hyper-rustls = { version = "0.27.7", features = ["rustls-native-certs"] } # Or latest 0.26.x version
-
-dotenvy = "0.15.7" # For environment variable management

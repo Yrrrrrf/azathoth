@@ -1,5 +1,5 @@
 [project]
-name = "azathoth"
+name = "mcp-py"
 authors = [
 	{ name = "Fernando Bryan Reza Campos", email = "fer.rezac@outlook.com" },
 ]
@@ -21,8 +21,8 @@ dependencies = [
 	"mcp[cli]>=1.17.0",
 ]
 
-# Not necessary, I will need to add them if I sometime publish this as a package
-# exclude = [
+# # Not necessary, I will need to add them if I sometime publish this as a package
+# ignore = [
 # # rust related stuff
 # 	"uv.lock",
 # 	"Cargo.toml",
@@ -32,7 +32,19 @@ dependencies = [
 # 	"azathoth-macros/*",
 # ]
 
+# [tool.uv.workspace]
+# members = [
+#     "mcp-py",
+# ]
 
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
+
+[project.scripts]
+main-tester = "mcp_py:main"
+# cli = "mcp_py.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.8.19,<0.9.0"]
+build-backend = "uv_build"
