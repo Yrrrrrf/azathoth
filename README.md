@@ -25,7 +25,9 @@ Azathoth is not just a tool; it's an opinionated AI agent framework. It serves a
 
 ### Installation
 
-This project uses both Python and Rust dependencies. For Python dependencies:
+This project is a workspace containing multiple components.
+
+For Python dependencies:
 
 ```sh
 uv sync
@@ -39,11 +41,26 @@ cargo build --release
 
 ### Quick Start
 
-The Azathoth project provides a suite of standalone servers that can be integrated with any MCP-compatible AI agent or CLI:
+The Azathoth project provides a suite of tools and servers that can be integrated with any MCP-compatible AI agent or CLI:
 
-1. **Dynamic AI Directives (directives.py):** Configure the core behavior of your AI assistant on the fly.
-2. **Autonomous Code Analysis (scout.py):** An intelligent agent that can explore a codebase and generate a comprehensive report.
-3. **Intelligent Git Workflows (workflow.py):** Automate common Git tasks with AI-powered context.
+1.  **`azathoth`**: The main binary of the project.
+2.  **`mcp_py`**: A Python implementation of an MCP client, with the following scripts:
+    *   **`scout`**: An intelligent agent that can explore a codebase and generate a comprehensive report.
+    *   **`workflow`**: Automate common Git tasks with AI-powered context.
+3.  **`mcp_rs`**: A Rust implementation of an MCP client, with examples like:
+    *   **`directives`**: Configure the core behavior of your AI assistant on the fly.
+
+To run the python scripts:
+```sh
+mcpy-py
+scout
+workflow
+```
+
+To run the rust examples:
+```sh
+cargo run --example <example_name>
+```
 
 ## 📄 License
 
