@@ -12,18 +12,13 @@ keywords = [
 	"ai",
 	"mcp",
 	"deep learning"
-	]
+]
 dependencies = [
-	# "numpy", # Numerical computing
-	# # "pandas>=1.4.0",        # Data manipulation
-	# "polars>=1.34.0", # Fast DataFrame library in Rust
-	# * MCP
-	"mcp[cli]>=1.16.0",
-	# Some:
-	"httpx>=0.28.1",
-	"gitingest>=0.3.1",
-	"rich>=14.1.0",
+	# Logging
+	"rich>=14.2.0",
 	"rune-lib>=0.0.4",
+	# * MCP
+	"mcp[cli]>=1.17.0",
 ]
 
 # Not necessary, I will need to add them if I sometime publish this as a package
