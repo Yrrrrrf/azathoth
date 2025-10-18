@@ -3,11 +3,15 @@
 [workspace]
 # meta info
 package.authors = ["Fernando Bryan Reza Campos <fer.rezac@outlook.com>"]
-package.version = "0.0.1"
+package.version = "0.0.2"
 package.edition = "2024"
 package.license = "MIT"
 package.readme = "README.md"
 package.keywords = ["ai", "mcp"]
+
+package.repository = "https://github.com/Yrrrrrf/azathoth"
+package.homepage = "https://crates.io/crates/azathoth"
+package.documentation = "https://docs.rs/azathoth"
 
 members = [
     "src/azathoth",

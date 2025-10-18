@@ -7,3 +7,7 @@ license = {workspace = true }
 readme = {workspace = true }
 keywords = {workspace = true }
 description = "Some of the stuff I've created while learning the 'State of the Art' in AI."
+
+repository = {workspace = true }
+homepage = {workspace = true }
+documentation = {workspace = true }

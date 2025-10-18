@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="assets/img/abstract-shape.png" alt="Azathoth Icon" width="128" height="128">
+  <img src="https://raw.githubusercontent.com/Yrrrrrf/azathoth/main/assets/img/abstract-shape.png" alt="Azathoth Icon" width="128" height="128">
   <div align="center">Azathoth</div>
 </h1>
 
@@ -11,13 +11,13 @@
 [![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)](https://github.com/Yrrrrrf/Azathoth/releases)
 
 <!-- Rust based projects -->
-[![Crates.io](https://img.shields.io/crates/v/mcp-rs.svg&logo=rust)](https://crates.io/crates/azathoth)
-[![Crates.io Downloads](https://img.shields.io/crates/d/azathoth.svg)](https://crates.io/crates/azathoth)
-[![docs.rs](https://img.shields.io/badge/docs.rs-azathoth-66c2a5.svg)](https://docs.rs/azathoth)
+[![Crates.io](https://img.shields.io/crates/v/azathoth)](https://crates.io/crates/azathoth)
+[![Crates.io Downloads](https://img.shields.io/crates/d/azathoth)](https://crates.io/crates/azathoth)
+[![docs.rs](https://img.shields.io/badge/docs.rs-azathoth-66c2a5)](https://docs.rs/azathoth)
 
 <!-- Python based projects -->
-<!-- [![PyPI version](https://img.shields.io/pypi/v/mcp-py.svg)](https://pypi.org/project/mcp-py/)
-[![PyPI Downloads](https://img.shields.io/pypi/dm/mcp-py.svg)](https://pypi.org/project/mcp-py/) -->
+<!-- [![PyPI version](https://img.shields.io/pypi/v/azathoth.svg)](https://pypi.org/project/azathoth/) -->
+<!-- [![PyPI Downloads](https://img.shields.io/pypi/dm/azathoth.svg)](https://pypi.org/project/azathoth/) -->
 
 </div>
 
