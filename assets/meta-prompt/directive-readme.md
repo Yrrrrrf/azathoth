@@ -80,7 +80,7 @@ Directly following the header, there MUST be a centered `<div>` containing a col
 
 <!-- Python based projects -->
 [![PyPI version](https://img.shields.io/pypi/v/RepoName)](https://pypi.org/project/RepoName/)
-[![PyPI Downloads](https://img.shields.io/pypi/dm/RepoName)](https://pypi.org/project/RepoName/)
+[![PyPi Downloads](https://pepy.tech/badge/RepoName)](https://pepy.tech/project/RepoName)
 
 <!-- Web based projects -->
 [![JSR](https://jsr.io/badges/@yrrrrrf/RepoName)](https://jsr.io/@yrrrrrf/RepoName)
