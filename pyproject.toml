@@ -24,6 +24,7 @@ dependencies = [
 members = [
 	"src/mcp_py*",
 	"src/azathoth/*.py",
+	# "src/azathoth*",  # this way it interprets azathoth as a package and it will need it's own pyproject.toml
 ]
 exclude = [
 	# pkg related
@@ -44,7 +45,7 @@ venv = ".venv"
 azathoth = "azathoth:main"
 # cli = "azathoth.cli:main"
 
-mcpy-py = "mcp_py:main"
+mcp-py = "mcp_py:main"
 main-tester = "mcp_py.examples.main_tester:main"
 
 # * python mcp scripts
