@@ -1,22 +1,21 @@
 #[macro_export]
 macro_rules! define_directives {
-    ($($lang:ident ($($alias:literal),*) => $content:tt),+ $(,)?) => {
-        // --- LanguageGuide Enum ---
+    (
+        $($lang:ident ($($alias:literal),*) => $content_type:ident ! ( $($content:tt)* ) ),+
+        $(,)?
+    ) => {
+        // --- LanguageGuide Enum (Unchanged) ---
         #[derive(Debug, Serialize, Deserialize, JsonSchema)]
         #[serde(rename_all = "camelCase")]
         pub enum LanguageGuide {
             $($lang),+
         }
 
+        // --- from_string Implementation (Unchanged from our fix) ---
         impl LanguageGuide {
-            /// Case-insensitively checks the input string against the language
-            /// names and their defined aliases.
             pub fn from_string(s: &str) -> Option<Self> {
                 let s_lower = s.to_lowercase();
                 $(
-                    // This check now correctly handles the primary language name (e.g., "Python")
-                    // by converting it to lowercase before comparing. It also iterates
-                    // through all provided aliases.
                     if s_lower == stringify!($lang).to_lowercase() $( || s_lower.as_str() == $alias )* {
                         return Some(Self::$lang);
                     }
@@ -25,36 +24,46 @@ macro_rules! define_directives {
             }
         }
 
-        // --- Guidance Functions for each language (unchanged) ---
-        $(
-            paste! {
-                pub fn [<get_ $lang:lower _guidance>]() -> String {
-                    define_directives!(@content $lang $content).to_string()
-                }
-            }
-        )+
-
-        // --- Main get_guidance function (unchanged) ---
+        // --- Enhanced get_guidance function ---
+        // This now generates the content-loading logic directly inside the match arm,
+        // which is cleaner and more efficient than creating many small functions.
         pub fn get_guidance(lang: LanguageGuide) -> String {
             match lang {
                 $(
-                    LanguageGuide::$lang => paste! { [<get_ $lang:lower _guidance>]() },
+                    LanguageGuide::$lang => {
+                        // The macro calls a helper rule to process the content.
+                        define_directives!(@process_content $content_type ! ( $($content)* ))
+                    }
                 )+
             }
         }
     };
-    // --- Content handlers for the macro (unchanged) ---
-    (@content $lang:ident {$lang_name:literal, [$($ext:literal),*]}) => {
-        concat!(
+
+    // --- Helper rule for processing 'content!("...")' ---
+    // Handles simple inline strings.
+    (@process_content content ! ($str:literal)) => {
+        $str.to_string()
+    };
+
+    // --- Helper rule for processing 'file!("...")' ---
+    // Handles including a single file's content.
+    (@process_content file ! ($path:literal)) => {
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/meta-prompt/", $path)).to_string()
+    };
+
+    // --- Helper rule for processing 'files!(["...", "..."])' ---
+    // Handles combining multiple files into a single string.
+    (@process_content files ! ([$($path:literal),+])) => {
+        {
+            let mut combined = String::new();
             $(
-                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/meta-prompt/d-", $lang_name, ".", $ext))
-            ),*
-        )
-    };
-    (@content $lang:ident {$str:literal}) => {
-        $str
-    };
-    (@content $lang:ident {$($file:tt)*}) => {
-        include_str!($($file)*)
+                let content = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/meta-prompt/", $path));
+                if !combined.is_empty() {
+                    combined.push_str("\n\n---\n\n");
+                }
+                combined.push_str(content);
+            )+
+            combined
+        }
     };
 }

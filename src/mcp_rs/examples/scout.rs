@@ -1,26 +1,29 @@
-use paste::paste;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use mcp_rs::define_directives;
 use rmcp::{
+    ErrorData as McpError, ServerHandler, ServiceExt,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
     model::{ServerCapabilities, ServerInfo},
-    tool, tool_handler, tool_router, ErrorData as McpError, ServerHandler, ServiceExt,
+    tool, tool_handler, tool_router,
     transport::stdio,
 };
 
 define_directives! {
-    // LANGUAGE (ALIASES) => CONTENT
-    //* Lang(alias) => {file_path} or {"string content"} or {lang_name, [ext1, ext2]}
-    Go("golang") => {"Go guidance placeholder"},
-    Python("py") => {"python", ["md", "py"]},
-    Rust("rs") => {"Rust guidance placeholder"},
-    C("cpp", "c++", "objc", "objective-c") => {"C-based languages guidance placeholder"},
-    Web("javascript", "js", "typescript", "ts", "html", "css", "svelte", "react", "vue") => {"Web technologies guidance placeholder"},
-    Kotlin("java", "kt") => {"Kotlin guidance placeholder"},
-    Container("docker", "podman", "dockerfile") => {"Container technologies guidance placeholder"},
-    SystemTool("system", "tool", "rg", "ripgrep", "eza", "fd", "fzf", "bat", "exa") => {"System tools guidance placeholder"}
+    // 1. For simple, inline string content
+    Go("golang") => content!("Go guidance placeholder"),
+
+    // 2. To load a single, specific directive file
+    // Python("py") => file!("d-python.md"),
+    Python("py") => files!(["d-python.md", "d-python.py"]),
+
+    // 3. To combine multiple files into one master directive
+    // Rust("rs") => files!(["d-rust.md"]), // Assuming you create a d-rust.md
+
+    // You can mix and match as needed
+    Web("js", "ts", "svelte") => content!("Web technologies guidance placeholder"),
+    C("cpp", "c++") => content!("C-based languages guidance placeholder")
 }
 
 // --- Define the parameters for the new 'adapt' tool ---
@@ -52,7 +55,9 @@ impl ScoutMcpServer {
     }
 
     /// Loads and combines language-specific directives to adapt the AI to a preferred coding style.
-    #[tool(description = "Provides coding guidance and best practices for one or more technologies.")]
+    #[tool(
+        description = "Provides coding guidance and best practices for one or more technologies."
+    )]
     async fn adapt(&self, params: Parameters<AdaptParams>) -> Result<String, McpError> {
         let mut result = String::new();
         let core_philosophy = include_str!(concat!(
