@@ -9,17 +9,23 @@ macro_rules! define_directives {
         }
 
         impl LanguageGuide {
+            /// Case-insensitively checks the input string against the language
+            /// names and their defined aliases.
             pub fn from_string(s: &str) -> Option<Self> {
-                match s.to_lowercase().as_str() {
-                    $(
-                        stringify!($lang) | $($alias)|* => Some(Self::$lang),
-                    )+
-                    _ => None,
-                }
+                let s_lower = s.to_lowercase();
+                $(
+                    // This check now correctly handles the primary language name (e.g., "Python")
+                    // by converting it to lowercase before comparing. It also iterates
+                    // through all provided aliases.
+                    if s_lower == stringify!($lang).to_lowercase() $( || s_lower.as_str() == $alias )* {
+                        return Some(Self::$lang);
+                    }
+                )+
+                None
             }
         }
 
-        // --- Guidance Functions for each language ---
+        // --- Guidance Functions for each language (unchanged) ---
         $(
             paste! {
                 pub fn [<get_ $lang:lower _guidance>]() -> String {
@@ -28,7 +34,7 @@ macro_rules! define_directives {
             }
         )+
 
-        // --- Main get_guidance function ---
+        // --- Main get_guidance function (unchanged) ---
         pub fn get_guidance(lang: LanguageGuide) -> String {
             match lang {
                 $(
@@ -37,7 +43,7 @@ macro_rules! define_directives {
             }
         }
     };
-    // --- Content handlers for the macro ---
+    // --- Content handlers for the macro (unchanged) ---
     (@content $lang:ident {$lang_name:literal, [$($ext:literal),*]}) => {
         concat!(
             $(
