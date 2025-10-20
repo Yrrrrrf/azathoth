@@ -1,6 +1,9 @@
-# FILE: scripts/pyex.py
+# Python coding style example
+
+# FILE: d-python.py
+
 # Example of a small, compliant CLI tool.
-# To run: uv run scripts/pyex.py --source-dir ./assets
+# To run: uv run d-python.py --source-dir ./assets
 
 from __future__ import annotations
 
@@ -31,29 +34,37 @@ def process_file(file_path: Path) -> JsonPayload | None:
         case ".md":
             # Rule 3: Use the walrus operator within a simple if.
             if (size := file_path.stat().st_size) > 1024:
-                console.print(f"[yellow]Large markdown file found: {file_path.name}[/yellow]")
-            return {"file": file_path.name, "type": "markdown", "size_kb": round(size / 1024, 2)}
+                console.print(
+                    f"[yellow]Large markdown file found: {file_path.name}[/yellow]"
+                )
+            return {
+                "file": file_path.name,
+                "type": "markdown",
+                "size_kb": round(size / 1024, 2),
+            }
         case ".json":
             try:
                 content = json.loads(file_path.read_text(encoding="utf-8"))
 
-                # --- FIX: Handle both JSON Objects and JSON Arrays ---
-                # This block now checks the type of the parsed content.
-                if isinstance(content, dict):
-                    count = len(content.keys())
-                    payload_type = "json_object"
-                elif isinstance(content, list):
-                    count = len(content)
-                    payload_type = "json_array"
-                else:
-                    # Handle other valid JSON types like a single string or number
-                    count = 1
-                    payload_type = "json_value"
+                # Rule 3: Use match...case for complex conditions - handle different JSON types
+                match content:
+                    case dict():
+                        count = len(content.keys())
+                        payload_type = "json_object"
+                    case list():
+                        count = len(content)
+                        payload_type = "json_array"
+                    case _:
+                        # Handle other valid JSON types like a single string or number
+                        count = 1
+                        payload_type = "json_value"
 
                 return {"file": file_path.name, "type": payload_type, "count": count}
 
             except (json.JSONDecodeError, UnicodeDecodeError):
-                console.print(f"[bold red]Error parsing invalid JSON file: {file_path.name}[/bold red]")
+                console.print(
+                    f"[bold red]Error parsing invalid JSON file: {file_path.name}[/bold red]"
+                )
                 return None
         case _:
             return None
@@ -81,9 +92,11 @@ def analyze(
 ) -> None:
     """Analyzes all supported files in the target directory."""
     console.print(f"🚀 Analyzing directory: [bold cyan]{source_dir}[/bold cyan]")
-    console.print(f"   Recursive search: {'[green]Enabled[/green]' if recursive else '[yellow]Disabled[/yellow]'}")
+    console.print(
+        f"   Recursive search: {'[green]Enabled[/green]' if recursive else '[yellow]Disabled[/yellow]'}"
+    )
 
-    iterator = source_dir.rglob('*') if recursive else source_dir.iterdir()
+    iterator = source_dir.rglob("*") if recursive else source_dir.iterdir()
 
     # Rule 3: Use a generator expression for memory efficiency and conciseness.
     # Rule 3: Use the walrus operator to process and filter in one pass.

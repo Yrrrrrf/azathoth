@@ -15,9 +15,11 @@
     *   **BAD:** `python src/main.py`
 
 ### 2. Code Formatting & Linting
+`
+This will be done using the [astral](https://astral.rs/) toolchain, which is tightly integrated with [`uv`](https://astral.rs/uv/).
 
-*   **Formatter:** The sole, mandatory code formatter is `ruff format`. All Python code you generate **MUST** be formatted accordingly. The command to use is `uvx ruff format .`.
-*   **Linter:** Linting is handled by `ruff` and type checking by `pyright`. All code **MUST** pass strict type checking.
+*   **Formatter [`(ruff)`](https://astral.rs/ruff/):** The sole, mandatory code formatter is `ruff format`. The command to use is `uvx ruff format .`.
+*   **Type Checking [`(ty)`](https://docs.astral.sh/ty/):** Type checking is handled by `ty`. The command to use is `uvx ty check`.
 
 ### 3. Syntax, Idioms, and Patterns
 
@@ -38,11 +40,12 @@ This is the core of my Python philosophy. Your generated code **MUST** reflect t
 
 Unless specified otherwise, you **MUST** default to these libraries when generating new projects or features.
 
-*   **Web APIs:** **FastAPI**. Its modern, type-driven approach is the standard.
-*   **CLI Applications:** **Typer**. It integrates seamlessly with the FastAPI philosophy.
-*   **Data Manipulation:** **Polars**. It is the default choice over Pandas for performance and its modern API.
-*   **Asynchronous HTTP:** **httpx**. It is the standard client for both sync and async requests.
-*   **Configuration:** **Pydantic's `BaseSettings`**. This allows for type-safe configuration loaded from environment variables.
+*   **Web APIs [`(FastAPI)`](https://fastapi.tiangolo.com/):** FastAPI is the sole, mandatory framework for building web APIs. Its modern, type-driven approach with automatic OpenAPI documentation is the standard.
+*   **CLI Applications [`(Typer)`](https://typer.tiangolo.com/):** Typer is the mandatory framework for command-line interfaces. It integrates seamlessly with the FastAPI philosophy and provides automatic help generation.
+*   **Data Manipulation [`(Polars)`](https://docs.pola.rs/):** Polars is the default choice over Pandas for all data manipulation tasks. Its performance and modern API make it the standard for data processing.
+*   **Asynchronous HTTP [`(httpx)`](https://www.python-httpx.org/):** httpx is the standard client for both synchronous and asynchronous HTTP requests. It provides a modern, fully typed API.
+*   **Configuration [`(Pydantic)`](https://docs.pydantic.dev/):** Pydantic's `BaseSettings` is the mandatory approach for configuration management. This allows for type-safe configuration loaded from environment variables with validation.
+*   **Terminal User Interfaces [`(Textual)`](https://textual.textualize.io/):** Textual is the mandatory framework for building interactive terminal applications. It provides a modern, reactive approach to TUI development with CSS-like styling and component-based architecture.
 
 ### 5. Project Structure
 
@@ -92,10 +95,25 @@ Unless specified otherwise, you **MUST** default to these libraries when generat
             """A more specific error."""
         '''
 
-### 9. Logging
+### 9. Logging & Console Output
 
-*   **Standard Library:** You **MUST** use the standard `logging` library for all application logging.
-*   **Structured Logs:** Logging output **MUST** be configured to be structured JSON. This is critical for parsing and analysis in production environments. A library like `python-json-logger` can be used for this purpose.
+This will be done using the [`rich`](https://rich.readthedocs.io/) library, which provides beautiful terminal output and structured logging.
+
+*   **Console Output [`(rich)`](https://rich.readthedocs.io/):** The sole, mandatory library for console output is `rich`. Use `rich.print()` for enhanced output and `rich.console.Console()` for advanced formatting.
+*   **Logging:** For application logging, use `rich.logging.RichHandler` as the handler for Python's standard `logging` library. This combines structured logging with rich formatting.
+    *   **Standard Setup:**
+        '''python
+        import logging
+        from rich.logging import RichHandler
+
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(message)s",
+            handlers=[RichHandler(rich_tracebacks=True, markup=True)]
+        )
+        log = logging.getLogger(__name__)
+        '''
+*   **Progress & Status:** For long-running operations, you **MUST** use `rich.progress.Progress` or `rich.status.Status` to provide user feedback.
 
 ### Correct Usage Example
 

@@ -17,7 +17,15 @@ console = Console()
 
 # Create the server with enhanced visual output
 console.clear()
-console.print(Panel(Text("🚀 Starting Scout Prompt MCP Server... (Python Version)", style="bold green blink"), border_style="green"))
+console.print(
+    Panel(
+        Text(
+            "🚀 Starting Scout Prompt MCP Server... (Python Version)",
+            style="bold green blink",
+        ),
+        border_style="green",
+    )
+)
 
 # --- MCP SERVER DEFINITION ---
 scout_server = FastMCP(
@@ -27,9 +35,10 @@ scout_server = FastMCP(
 
 # --- PROMPT PARAMETERS and FUNCTION ---
 
+
 @scout_server.prompt(
     title="Explore, Adapt, and Report on a Codebase",
-    description="Instructs the AI to act as a 'Code Scout' to analyze a codebase"
+    description="Instructs the AI to act as a 'Code Scout' to analyze a codebase",
 )
 def explore(target_directory: str = ".") -> str:
     """
@@ -37,13 +46,18 @@ def explore(target_directory: str = ".") -> str:
     It explores, identifies the language, adapts to your coding style,
     and then produces a comprehensive overview report.
     """
-    
+
     # Enhanced visual output when the prompt is invoked
-    console.print(Panel(
-        Text(f"🔍 Exploring directory: {target_directory} (Python Implementation)", style="bold yellow italic"),
-        border_style="yellow"
-    ))
-    
+    console.print(
+        Panel(
+            Text(
+                f"🔍 Exploring directory: {target_directory} (Python Implementation)",
+                style="bold yellow italic",
+            ),
+            border_style="yellow",
+        )
+    )
+
     # This is the instructional text for the AI, taken directly from scout.py
     instructions = f"""
 You are an expert software architect acting as a 'Code Scout'. Your mission is to explore the codebase in '{target_directory}' and produce a high-level overview report, adapted to the project's specific coding philosophy.
@@ -88,29 +102,42 @@ You MUST base your entire analysis on the output of the tools you run.
 """
 
     # Enhanced visual output when returning the prompt
-    console.print(Panel(
-        Text("📋 Prompt instructions prepared for AI (Python Version)", style="bold dim"),
-        border_style="blue"
-    ))
-    
+    console.print(
+        Panel(
+            Text(
+                "📋 Prompt instructions prepared for AI (Python Version)",
+                style="bold dim",
+            ),
+            border_style="blue",
+        )
+    )
+
     return instructions
+
 
 # --- MAIN FUNCTION TO RUN THE SERVER ---
 def main():
     """Main function to start the MCP server with enhanced visual output."""
-    
+
     console.print(
         Panel(
-            Text("✅ Server is ready with the 'explore' prompt. (Python Version)", style="bold green"),
-            border_style="green"
+            Text(
+                "✅ Server is ready with the 'explore' prompt. (Python Version)",
+                style="bold green",
+            ),
+            border_style="green",
         )
     )
     console.print(
-        Text("   🌐 Connect with an MCP client like MCP Inspector to use it.", style="italic dim")
+        Text(
+            "   🌐 Connect with an MCP client like MCP Inspector to use it.",
+            style="italic dim",
+        )
     )
-    
+
     # Keep the server running
     scout_server.run()
+
 
 if __name__ == "__main__":
     main()
