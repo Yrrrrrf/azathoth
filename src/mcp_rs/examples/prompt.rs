@@ -1,19 +1,29 @@
 //! A simple MCP server demonstrating a single, powerful prompt.
 //! This prompt is a Rust version of the 'explore' prompt from the scout.py script.
+//! It instructs the LLM to analyze a codebase, adapt to its style, and produce a comprehensive overview report.
+//!
+//! Example configuration to run this server via MCP Inspector:
+//! "prompt": {
+//!   "command": "cargo",
+//!   "args": [ "run", "--example", "prompt" ],
+//!   "cwd": "/home/yrrrrrf/docs/lab/azathoth",
+//!   "timeout": 30000
+//! }
+
 use rmcp::RoleServer;
 use rmcp::model::GetPromptResult;
-use rmcp::model::PaginatedRequestParam;
 use rmcp::model::ListPromptsResult;
+use rmcp::model::PaginatedRequestParam;
 
 // --- NECESSARY IMPORTS ---
 use rmcp::{
-    service::RequestContext,
+    ErrorData as McpError, ServerHandler, ServiceExt,
     handler::server::{router::prompt::PromptRouter, wrapper::Parameters},
     model::{
-        GetPromptRequestParam,
-        PromptMessage, PromptMessageRole, ServerCapabilities, ServerInfo,
+        GetPromptRequestParam, PromptMessage, PromptMessageRole, ServerCapabilities, ServerInfo,
     },
-    prompt, prompt_handler, prompt_router, ErrorData as McpError, ServerHandler, ServiceExt,
+    prompt, prompt_handler, prompt_router,
+    service::RequestContext,
     transport::stdio,
 };
 use schemars::JsonSchema;
@@ -58,8 +68,14 @@ impl ScoutServer {
     /// Instructs the LLM to act as a 'Code Scout' to analyze a codebase.
     /// It explores, identifies the language, adapts to your coding style,
     /// and then produces a comprehensive overview report.
-    #[prompt(name = "explore", description = "Explore, Adapt, and Report on a Codebase")]
-    async fn explore(&self, params: Parameters<ExploreParams>) -> Result<Vec<PromptMessage>, McpError> {
+    #[prompt(
+        name = "explore",
+        description = "Explore, Adapt, and Report on a Codebase"
+    )]
+    async fn explore(
+        &self,
+        params: Parameters<ExploreParams>,
+    ) -> Result<Vec<PromptMessage>, McpError> {
         let target_directory = &params.0.target_directory;
 
         // This is the instructional text for the AI, taken directly from scout.py
@@ -120,7 +136,9 @@ You MUST base your entire analysis on the output of the tools you run.
 impl ServerHandler for ScoutServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
-            instructions: Some("A server that provides a powerful 'explore' prompt for code analysis.".to_string()),
+            instructions: Some(
+                "A server that provides a powerful 'explore' prompt for code analysis.".to_string(),
+            ),
             capabilities: ServerCapabilities::builder().enable_prompts().build(),
             ..Default::default()
         }

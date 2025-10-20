@@ -1,15 +1,14 @@
 use paste::paste;
 use rmcp::{
-    ErrorData as McpError, ServerHandler, ServiceExt,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
     model::{ServerCapabilities, ServerInfo},
-    tool, tool_handler, tool_router,
+    tool, tool_handler, tool_router, ErrorData as McpError, ServerHandler, ServiceExt,
     transport::stdio,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-// --- Define the macro for generating directive-related code ---
+// --- This macro is the core of your directive loading system and remains unchanged ---
 macro_rules! define_directives {
     ($($lang:ident ($($alias:literal),*) => $content:tt),+ $(,)?) => {
         // --- LanguageGuide Enum ---
@@ -52,8 +51,7 @@ macro_rules! define_directives {
     (@content $lang:ident {$lang_name:literal, [$($ext:literal),*]}) => {
         concat!(
             $(
-                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/meta-prompt/d-", $lang_name, ".", $ext)),
-                "\n"
+                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/meta-prompt/d-", $lang_name, ".", $ext))
             ),*
         )
     };
@@ -66,6 +64,7 @@ macro_rules! define_directives {
 }
 
 // --- Define the languages, their aliases, and the content to be served ---
+// This section is also unchanged and continues to power the logic.
 define_directives! {
     // LANGUAGE (ALIASES) => CONTENT
     //* Lang(alias) => {file_path} or {"string content"} or {lang_name, [ext1, ext2]}
@@ -79,74 +78,57 @@ define_directives! {
     SystemTool("system", "tool", "rg", "ripgrep", "eza", "fd", "fzf", "bat", "exa") => {"System tools guidance placeholder"}
 }
 
-// --- Define the parameters for our directive tools ---
+// --- Define the parameters for the new 'adapt' tool ---
+// This now takes a Vec<String> as requested.
 #[derive(Serialize, Deserialize, JsonSchema)]
-struct GetGuidanceParams {
-    language: String,
-}
-
-#[derive(Serialize, Deserialize, JsonSchema)]
-struct GetMultipleGuidancesParams {
+struct AdaptParams {
     languages: Vec<String>,
 }
 
-// --- Define the server struct ---
+// --- Define the server struct, renamed for clarity ---
 #[derive(Clone)]
-struct DirectivesMcpServer {
+struct ScoutMcpServer {
     tool_router: ToolRouter<Self>,
 }
 
-impl Default for DirectivesMcpServer {
+impl Default for ScoutMcpServer {
     fn default() -> Self {
         Self::new()
     }
 }
 
-// --- Define the tools ---
+// --- Define the single 'adapt' tool ---
 #[tool_router]
-impl DirectivesMcpServer {
+impl ScoutMcpServer {
     pub fn new() -> Self {
         Self {
             tool_router: Self::tool_router(),
         }
     }
 
-    /// Get guidance for a specific technology
-    #[tool(description = "Provides coding guidance and best practices for a specific technology.")]
-    async fn get_guidance(
-        &self,
-        params: Parameters<GetGuidanceParams>,
-    ) -> Result<String, McpError> {
-        let language = &params.0.language;
-
-        match LanguageGuide::from_string(language) {
-            Some(lang_guide) => Ok(get_guidance(lang_guide)),
-            None => Ok(format!(
-                "No specific guidance available for language: {}. Using general development philosophy.",
-                language
-            )),
-        }
-    }
-
-    /// Get guidance for multiple technologies
-    #[tool(
-        description = "Provides coding guidance and best practices for multiple technologies at once."
-    )]
-    async fn get_multiple_guidances(
-        &self,
-        params: Parameters<GetMultipleGuidancesParams>,
-    ) -> Result<String, McpError> {
+    /// Loads and combines language-specific directives to adapt the AI to a preferred coding style.
+    #[tool(description = "Provides coding guidance and best practices for one or more technologies.")]
+    async fn adapt(&self, params: Parameters<AdaptParams>) -> Result<String, McpError> {
         let mut result = String::new();
+        let core_philosophy = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../assets/meta-prompt/core-philosophy.md"
+        ));
+
+        // The core philosophy is always the foundation.
+        result.push_str(core_philosophy);
+
+        // Append specific language directives if any are requested.
         for language in &params.0.languages {
-            result.push_str(&format!("### {} Guidance:\n", language));
-            result.push_str(
-                &self
-                    .get_guidance(Parameters(GetGuidanceParams {
-                        language: language.clone(),
-                    }))
-                    .await?,
-            );
             result.push_str("\n\n---\n\n");
+            let guidance = match LanguageGuide::from_string(language) {
+                Some(lang_guide) => get_guidance(lang_guide),
+                None => format!(
+                    "Note: No specific guidance available for language: '{}'.",
+                    language
+                ),
+            };
+            result.push_str(&guidance);
         }
         Ok(result)
     }
@@ -154,10 +136,13 @@ impl DirectivesMcpServer {
 
 // --- Implement the MCP Server Handler ---
 #[tool_handler]
-impl ServerHandler for DirectivesMcpServer {
+impl ServerHandler for ScoutMcpServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
-            instructions: Some("Provides language-specific coding guidance and best practices for various technologies.".to_string()),
+            instructions: Some(
+                "A server that adapts an AI to a specific coding style using directives."
+                    .to_string(),
+            ),
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             ..Default::default()
         }
@@ -169,11 +154,11 @@ impl ServerHandler for DirectivesMcpServer {
 async fn main() -> anyhow::Result<()> {
     // Clear the screen for a clean start
     print!("\x1B[H\x1B[J");
-    println!("🚀 Starting Enhanced Directives MCP server...");
+    println!("🚀 Starting Scout MCP server (Rust)...");
 
-    let server = DirectivesMcpServer::new().serve(stdio()).await?;
+    let server = ScoutMcpServer::new().serve(stdio()).await?;
 
-    println!("✅ Server is ready with language-specific guidance tools.");
+    println!("✅ Server is ready with the 'adapt' tool.");
 
     // Wait for the server to finish (e.g., when the client disconnects)
     server.waiting().await?;

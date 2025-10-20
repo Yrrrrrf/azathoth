@@ -1,10 +1,21 @@
 //! A simple MCP server with a single tool to get the current time.
+//! This tool returns the current system time as a string.
+//!  
+//! Example configuration to run this server via MCP Inspector:
+//! "tool": {
+//!   "command": "cargo",
+//!   "args": [ "run", "--example", "tool" ],
+//!   "cwd": "/home/yrrrrrf/docs/lab/azathoth",
+//!   "timeout": 30000
+//! }
 
 // --- NECESSARY IMPORTS ---
 use rmcp::{
+    ServerHandler, ServiceExt,
     handler::server::router::tool::ToolRouter,
     model::{ServerCapabilities, ServerInfo},
-    tool, tool_handler, tool_router, ServerHandler, ServiceExt, transport::stdio,
+    tool, tool_handler, tool_router,
+    transport::stdio,
 };
 // Use the standard chrono crate for time
 use chrono::Local;

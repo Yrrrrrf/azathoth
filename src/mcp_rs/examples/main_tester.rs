@@ -1,13 +1,16 @@
 // ALL NECESSARY IMPORTS ARE NOW INCLUDED
 use rmcp::{
-    handler::server::{router::prompt::PromptRouter, router::tool::ToolRouter, wrapper::Parameters},
+    ErrorData as McpError, ServerHandler, ServiceExt,
+    handler::server::{
+        router::prompt::PromptRouter, router::tool::ToolRouter, wrapper::Parameters,
+    },
     model::{
         GetPromptRequestParam, GetPromptResult, ListPromptsResult, PaginatedRequestParam,
         PromptMessage, PromptMessageRole, ServerCapabilities, ServerInfo,
     },
     prompt, prompt_handler, prompt_router,
     service::{RequestContext, RoleServer},
-    tool, tool_handler, tool_router, ErrorData as McpError, ServerHandler, ServiceExt,
+    tool, tool_handler, tool_router,
     transport::stdio,
 };
 use schemars::JsonSchema;

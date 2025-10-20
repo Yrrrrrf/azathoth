@@ -64,7 +64,7 @@ Directly following the header, there MUST be a centered `<div>` containing a col
 
 **Example Badge Showcase (Use as a reference):**
 
-```markdown
+<!-- ```markdown -->
 <div align="center">
 
 <!-- CORE BADGES (Pick ONE GitHub style) -->
@@ -93,7 +93,7 @@ Directly following the header, there MUST be a centered `<div>` containing a col
 <!-- metacomment: Add some build status badge -->
 
 </div>
-```
+<!-- ``` -->
 
 ### The Overview
 
