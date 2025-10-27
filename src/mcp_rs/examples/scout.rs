@@ -11,6 +11,8 @@ use rmcp::{
 };
 
 define_directives! {
+    Readme("readme") => file!("d-readme.md"),
+
     // 1. For simple, inline string content
     Go("golang") => content!("Go guidance placeholder"),
 
