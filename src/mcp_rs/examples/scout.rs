@@ -11,21 +11,15 @@ use rmcp::{
 };
 
 define_directives! {
+    // * meta project directives
     Readme("readme") => file!("d-readme.md"),
-
-    // 1. For simple, inline string content
-    Go("golang") => content!("Go guidance placeholder"),
-
-    // 2. To load a single, specific directive file
-    // Python("py") => file!("d-python.md"),
+    // * language-specific directives
+    Rust("rs") => files!(["d-rust.md", "d-rust.rs"]),
     Python("py") => files!(["d-python.md", "d-python.py"]),
-
-    // 3. To combine multiple files into one master directive
-    // Rust("rs") => files!(["d-rust.md"]), // Assuming you create a d-rust.md
-
-    // You can mix and match as needed
     Web("js", "ts", "svelte") => content!("Web technologies guidance placeholder"),
-    C("cpp", "c++") => content!("C-based languages guidance placeholder")
+    // todo: complete these directives with actual content files 
+    Go("go") => content!("Go guidance placeholder"),
+    C("c", "cpp", "c++") => content!("C-based languages guidance placeholder")
 }
 
 // --- Define the parameters for the new 'adapt' tool ---
