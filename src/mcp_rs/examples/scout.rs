@@ -17,7 +17,7 @@ define_directives! {
     Rust("rs") => files!(["d-rust.md", "d-rust.rs"]),
     Python("py") => files!(["d-python.md", "d-python.py"]),
     Web("js", "ts", "svelte") => content!("Web technologies guidance placeholder"),
-    // todo: complete these directives with actual content files 
+    // todo: complete these directives with actual content files
     Go("go") => content!("Go guidance placeholder"),
     C("c", "cpp", "c++") => content!("C-based languages guidance placeholder")
 }

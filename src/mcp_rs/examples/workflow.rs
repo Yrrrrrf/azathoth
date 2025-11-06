@@ -13,19 +13,14 @@
 
 // --- Corrected and complete imports ---
 use rmcp::{
-    model::{
-        GetPromptRequestParam, 
-        GetPromptResult, 
-        PaginatedRequestParam,
-        ListPromptsResult
-    },
+    ErrorData as McpError, ServerHandler, ServiceExt,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
+    model::{GetPromptRequestParam, GetPromptResult, ListPromptsResult, PaginatedRequestParam},
     model::{PromptMessage, PromptMessageRole, ServerCapabilities, ServerInfo},
     prompt, prompt_handler, prompt_router,
     service::{RequestContext, RoleServer},
     tool, tool_handler, tool_router,
     transport::stdio,
-    ErrorData as McpError, ServerHandler, ServiceExt,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -42,20 +37,28 @@ fn run_command(program: &str, args: &[&str]) -> Result<String, McpError> {
         .args(args)
         .output()
         // FIX: The internal_error function requires a second argument of Option<Value>.
-        .map_err(|e| McpError::internal_error(format!("Failed to execute command '{}': {}", program, e), None))?;
+        .map_err(|e| {
+            McpError::internal_error(
+                format!("Failed to execute command '{}': {}", program, e),
+                None,
+            )
+        })?;
 
     if output.status.success() {
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         // FIX: The internal_error function requires a second argument of Option<Value>.
-        Err(McpError::internal_error(format!(
-            "Command '{} {}' failed with status {}:\n{}",
-            program,
-            args.join(" "),
-            output.status,
-            stderr
-        ), None))
+        Err(McpError::internal_error(
+            format!(
+                "Command '{} {}' failed with status {}:\n{}",
+                program,
+                args.join(" "),
+                output.status,
+                stderr
+            ),
+            None,
+        ))
     }
 }
 
@@ -171,8 +174,13 @@ You are an expert release manager. Your task is to fully automate the creation a
 
     // --- Tools (The "Hands") ---
 
-    #[tool(description = "Stages all current changes and safely commits them with a provided message.")]
-    async fn stage_and_commit(&self, params: Parameters<StageAndCommitParams>) -> Result<String, McpError> {
+    #[tool(
+        description = "Stages all current changes and safely commits them with a provided message."
+    )]
+    async fn stage_and_commit(
+        &self,
+        params: Parameters<StageAndCommitParams>,
+    ) -> Result<String, McpError> {
         // Stage all changes first.
         run_command("git", &["add", "."])?;
 
@@ -180,19 +188,27 @@ You are an expert release manager. Your task is to fully automate the creation a
         let full_commit_message = format!("{}\n\n{}", params.0.commit_title, params.0.commit_body);
         let mut tmp_file = NamedTempFile::new()
             // FIX: The internal_error function requires a second argument of Option<Value>.
-            .map_err(|e| McpError::internal_error(format!("Failed to create temp file: {e}"), None))?;
-        
+            .map_err(|e| {
+                McpError::internal_error(format!("Failed to create temp file: {e}"), None)
+            })?;
+
         write!(tmp_file, "{}", full_commit_message)
             // FIX: The internal_error function requires a second argument of Option<Value>.
-            .map_err(|e| McpError::internal_error(format!("Failed to write to temp file: {e}"), None))?;
+            .map_err(|e| {
+                McpError::internal_error(format!("Failed to write to temp file: {e}"), None)
+            })?;
 
-        let commit_output = run_command("git", &["commit", "-F", tmp_file.path().to_str().unwrap()])?;
+        let commit_output =
+            run_command("git", &["commit", "-F", tmp_file.path().to_str().unwrap()])?;
 
         Ok(format!("Commit successful:\n{}", commit_output))
     }
 
     #[tool(description = "Creates a Git tag, pushes it, and creates a GitHub Release.")]
-    async fn create_git_release(&self, params: Parameters<CreateGitReleaseParams>) -> Result<String, McpError> {
+    async fn create_git_release(
+        &self,
+        params: Parameters<CreateGitReleaseParams>,
+    ) -> Result<String, McpError> {
         let p = params.0;
         run_command("git", &["tag", &p.version_tag])?;
         run_command("git", &["push", "origin", &p.version_tag])?;
@@ -237,7 +253,6 @@ impl ServerHandler for WorkflowServer {
         }
     }
 }
-
 
 // --- Main function to run the server ---
 #[tokio::main]
