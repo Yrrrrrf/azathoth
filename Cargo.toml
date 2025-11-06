@@ -27,8 +27,6 @@ exclude = [
     "uv.lock",
 ]
 
-# ignore some of the directories...
-
 # # COMPILE OPTIMIZATION ------------------------------------------------------------------------
 [profile.dev]
 opt-level = 0  # no optimizations (fastest compile time, slowest runtime)

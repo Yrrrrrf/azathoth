@@ -8,16 +8,10 @@ description = "Some of the stuff I've created while learning the 'State of the A
 requires-python = ">=3.12"
 readme = "README.md"
 license = { file = "LICENSE" }
-keywords = [
-	"ai",
-	"mcp",
-	"deep learning"
-]
+keywords = [ "ai", "mcp", "deep learning" ]
 dependencies = [
-	"rich>=14.2.0",  # logging tool
-	"rune-lib>=0.0.4",  # asset manager
-	# * MCP
-	"mcp[cli]>=1.17.0",
+	"rich>=14.2.0",
+	"mcp[cli]>=1.20.0",
 ]
 
 [tool.uv.workspace]

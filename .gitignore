@@ -1,3 +1,7 @@
+# all that start with a dot except .gitignore
+.*
+!.gitignore
+
 # Python-generated files
 __pycache__/
 *.py[oc]
@@ -6,21 +10,9 @@ dist/
 wheels/
 *.egg-info
 
-# env
-.venv
-
-# tools
-.ruff_cache
-.pytest_cache
+# Rust-generated files
+/target/
+temp/
 
 # lock files
 **/**.lock
-
-# rust related
-**/target/
-
-# Project related
-# private files
-.env
-# nix env
-flake.lock
