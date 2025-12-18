@@ -3,15 +3,20 @@ name = "azathoth"
 authors = [
 	{ name = "Fernando Bryan Reza Campos", email = "fer.rezac@outlook.com" },
 ]
-version = "0.0.1"
-description = "Some of the stuff I've created while learning the 'State of the Art' in AI."
+version = "0.1.0"
+description = "My personal AI architect and development partner."
 requires-python = ">=3.12"
 readme = "README.md"
 license = { file = "LICENSE" }
-keywords = [ "ai", "mcp", "deep learning" ]
+keywords = [ "ai", "mcp", "deep learning", "automation" ]
 dependencies = [
 	"rich>=14.2.0",
+	"typer>=0.12.0",
 	"mcp[cli]>=1.20.0",
+	# Ingestion Dependencies
+	"gitingest>=0.3.1",
+	"httpx>=0.28.1",
+	"nest-asyncio>=1.6.0", # Useful for running async code in CLI
 ]
 
 [tool.uv.workspace]
@@ -21,13 +26,8 @@ members = [
 	# "src/azathoth*",  # this way it interprets azathoth as a package and it will need it's own pyproject.toml
 ]
 exclude = [
-	# pkg related
 	"*.lock",
 	"dist",
-	"flake.*",
-
-	# rust related stuff
-	"Cargo.toml",
 	"target",
 ]
 
@@ -37,10 +37,10 @@ venv = ".venv"
 
 [project.scripts]
 azathoth = "azathoth:main"
-# cli = "azathoth.cli:main"
+# cli = "azathoth.cli:init_cli"
 
-mcp-py = "mcp_py:main"
-main-tester = "mcp_py.examples.main_tester:main"
+# mcp-py = "mcp_py:main"
+# main-tester = "mcp_py.examples.main_tester:main"
 
 # * python mcp scripts
 scout = "mcp_py.scout:main"
