@@ -29,6 +29,12 @@ def ingest(
     ignore_files: bool = typer.Option(
         True, "--ignore/--no-ignore", help="Respect .gitignore files."
     ),
+    separate: bool = typer.Option(
+        False,
+        "--separate",
+        "-s",
+        help="Save each repository as a separate file instead of a single digest (User/Org only).",
+    ),
 ):
     """
     📦 [bold]Universal Ingest Tool[/bold]
@@ -54,7 +60,8 @@ def ingest(
 
     async def run_ingestion():
         if ingest_type == IngestType.GITHUB_USER:
-            await engine.process_user(target, output)
+            # Pass the separate flag here
+            await engine.process_user(target, output, separate_files=separate)
         elif ingest_type == IngestType.GITHUB_REPO:
             await engine.process_repo(target, output)
         elif ingest_type == IngestType.LOCAL:

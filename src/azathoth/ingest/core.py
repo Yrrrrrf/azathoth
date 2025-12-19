@@ -107,7 +107,9 @@ class IngestionEngine:
         self._save_report(f"local-{name}", summary, tree, content, output_dir)
         self.console.print(f"[bold green]✓[/] Completed: [bold cyan]{name}[/]")
 
-    async def process_user(self, username: str, output_dir: Path):
+    async def process_user(
+        self, username: str, output_dir: Path, separate_files: bool = False
+    ):
         # 1. Fetch Repositories
         api_url = f"https://api.github.com/users/{username}/repos"
 
@@ -166,17 +168,22 @@ class IngestionEngine:
                 repo_url = repo["clone_url"]
 
                 async with semaphore:
-                    # Optional: Update status to show what is currently running
-                    # progress.update(main_task, description=f"[bold]Ingesting {username}...[/] [dim]({repo_name})[/]")
-
                     try:
                         s, t, c = await ingest_async(repo_url)
 
-                        repo_content = (
-                            f"\n\n{'=' * 30}\nREPO: {repo_name}\n{'=' * 30}\n{c}"
-                        )
-                        full_content_accumulator.append(repo_content)
-                        user_summary_lines.append(f"\n- {repo_name}: {len(c)} chars")
+                        if separate_files:
+                            # Save individual report immediately
+                            # Uses "user-{repo_name}" pattern as requested
+                            self._save_report(f"{username}-{repo_name}", s, t, c, output_dir)
+                        else:
+                            # Accumulate content for single digest
+                            repo_content = (
+                                f"\n\n{'=' * 30}\nREPO: {repo_name}\n{'=' * 30}\n{c}"
+                            )
+                            full_content_accumulator.append(repo_content)
+                            user_summary_lines.append(
+                                f"\n- {repo_name}: {len(c)} chars"
+                            )
 
                     except Exception as e:
                         failed_repos.append((repo_name, str(e)))
@@ -187,9 +194,6 @@ class IngestionEngine:
             await asyncio.gather(*tasks)
 
         # 3. Finalize
-        full_content = "".join(full_content_accumulator)
-        user_summary = "\n".join(user_summary_lines)
-
         self.console.print()
         self.console.print("[bold green]Ingestion Complete![/]")
 
@@ -201,10 +205,14 @@ class IngestionEngine:
             for name, reason in failed_repos:
                 self.console.print(f"  - {name}: [dim]{reason}[/]")
 
-        self._save_report(
-            f"user-{username}-digest",
-            user_summary,
-            "See individual repo sections",
-            full_content,
-            output_dir,
-        )
+        # Only save the digest if we didn't separate files
+        if not separate_files:
+            full_content = "".join(full_content_accumulator)
+            user_summary = "\n".join(user_summary_lines)
+            self._save_report(
+                f"{username}-digest",
+                user_summary,
+                "See individual repo sections",
+                full_content,
+                output_dir,
+            )
