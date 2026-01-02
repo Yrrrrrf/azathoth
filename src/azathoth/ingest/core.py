@@ -89,13 +89,50 @@ class IngestionEngine:
 
         self.console.print(f"   [dim]Saved report to: {file_path}[/]")
 
+    def _generate_filename_from_url(self, url: str) -> str:
+        """
+        Generates a standardized filename from a URL.
+        Format: {Repo} or {Repo}--{Subpath}
+        """
+        url = url.rstrip("/")
+        if url.endswith(".git"):
+            url = url[:-4]
+            
+        parts = url.split("/")
+        
+        # Check for GitHub structure to enforce [Project]--[Scope]
+        if "github.com" in parts:
+            try:
+                idx = parts.index("github.com")
+                # Structure: .../github.com/User/Repo
+                if len(parts) >= idx + 3:
+                    repo_name = parts[idx + 2]
+                    
+                    # Handle tree/blob for subpaths (e.g. .../Repo/tree/main/docs)
+                    # Parts indices: Repo(idx+2), tree(idx+3), branch(idx+4), subdir(idx+5)
+                    if len(parts) > idx + 5 and parts[idx + 3] in ["tree", "blob"]:
+                        # Join the remaining path parts with double dashes or single dashes
+                        # Recommendation: "Repo--path-to-dir"
+                        subpath = "-".join(parts[idx + 5:])
+                        return f"{repo_name}--{subpath}"
+                    
+                    return repo_name
+            except ValueError:
+                pass
+                
+        # Fallback: Use the last meaningful segment of the URL
+        return parts[-1]
+
     async def process_repo(self, url: str, output_dir: Path):
         with self.console.status(
             f"[bold blue]Ingesting Repo:[/] {url}...", spinner="dots"
         ):
             summary, tree, content = await ingest_async(url)
-        name = url.split("/")[-1].replace(".git", "")
-        self._save_report(f"repo-{name}", summary, tree, content, output_dir)
+        
+        # CHANGED: Use the helper to generate the source-agnostic name
+        name = self._generate_filename_from_url(url)
+        
+        self._save_report(name, summary, tree, content, output_dir)
         self.console.print(f"[bold green]✓[/] Completed: [bold cyan]{name}[/]")
 
     async def process_local(self, path: str, output_dir: Path):
@@ -103,8 +140,11 @@ class IngestionEngine:
             f"[bold blue]Ingesting Local Path:[/] {path}...", spinner="dots"
         ):
             summary, tree, content = await ingest_async(path)
+        
+        # CHANGED: Just use the resolved directory name (e.g., "azathoth")
         name = Path(path).resolve().name
-        self._save_report(f"local-{name}", summary, tree, content, output_dir)
+        
+        self._save_report(name, summary, tree, content, output_dir)
         self.console.print(f"[bold green]✓[/] Completed: [bold cyan]{name}[/]")
 
     async def process_user(
@@ -172,9 +212,8 @@ class IngestionEngine:
                         s, t, c = await ingest_async(repo_url)
 
                         if separate_files:
-                            # Save individual report immediately
-                            # Uses "user-{repo_name}" pattern as requested
-                            self._save_report(f"{username}-{repo_name}", s, t, c, output_dir)
+                            # CHANGED: Use just the repo name (e.g., "Leaflet.txt")
+                            self._save_report(repo_name, s, t, c, output_dir)
                         else:
                             # Accumulate content for single digest
                             repo_content = (
@@ -209,8 +248,10 @@ class IngestionEngine:
         if not separate_files:
             full_content = "".join(full_content_accumulator)
             user_summary = "\n".join(user_summary_lines)
+            
+            # CHANGED: Use just the username for the digest (e.g., "yrrrrrf.txt")
             self._save_report(
-                f"{username}-digest",
+                username,
                 user_summary,
                 "See individual repo sections",
                 full_content,
