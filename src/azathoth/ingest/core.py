@@ -98,9 +98,9 @@ class IngestionEngine:
         url = url.rstrip("/")
         if url.endswith(".git"):
             url = url[:-4]
-            
+
         parts = url.split("/")
-        
+
         # Check for GitHub structure to enforce [Project]--[Scope]
         if "github.com" in parts:
             try:
@@ -108,19 +108,19 @@ class IngestionEngine:
                 # Structure: .../github.com/User/Repo
                 if len(parts) >= idx + 3:
                     repo_name = parts[idx + 2]
-                    
+
                     # Handle tree/blob for subpaths (e.g. .../Repo/tree/main/docs)
                     # Parts indices: Repo(idx+2), tree(idx+3), branch(idx+4), subdir(idx+5)
                     if len(parts) > idx + 5 and parts[idx + 3] in ["tree", "blob"]:
                         # Join the remaining path parts with double dashes or single dashes
                         # Recommendation: "Repo--path-to-dir"
-                        subpath = "-".join(parts[idx + 5:])
+                        subpath = "-".join(parts[idx + 5 :])
                         return f"{repo_name}--{subpath}"
-                    
+
                     return repo_name
             except ValueError:
                 pass
-                
+
         # Fallback: Use the last meaningful segment of the URL
         return parts[-1]
 
@@ -129,57 +129,65 @@ class IngestionEngine:
             f"[bold blue]Ingesting Repo:[/] {url}...", spinner="dots"
         ):
             summary, tree, content = await ingest_async(url)
-        
+
         # CHANGED: Use the helper to generate the source-agnostic name
         name = self._generate_filename_from_url(url)
-        
+
         self._save_report(name, summary, tree, content, output_dir)
         self.console.print(f"[bold green]✓[/] Completed: [bold cyan]{name}[/]")
 
+    # FILE: src/azathoth/ingest/core.py
+
     async def process_local(self, path: str, output_dir: Path):
         target_path = Path(path).resolve()
-        
-        # Default fallback name (current dir name)
+
+        # Defaults
+        ingest_path = target_path
+        include_patterns = None  # Valid: None
         name = target_path.name
 
-        # 1. Attempt to detect Git Context for standardized naming
-        #    This handles the "Monorepo" case: Repo--subdir-service
         try:
-            # Check if this directory is part of a git repo
+            # 1. Find the Git Root
             cmd = ["git", "rev-parse", "--show-toplevel"]
             result = subprocess.run(
-                cmd, 
-                cwd=target_path, 
-                capture_output=True, 
-                text=True, 
-                check=True
+                cmd, cwd=target_path, capture_output=True, text=True, check=True
             )
             git_root = Path(result.stdout.strip())
             repo_name = git_root.name
 
             if target_path == git_root:
-                # We are at the root
                 name = repo_name
             else:
-                # We are in a subdirectory (Monorepo/Service context)
-                # Calculate relative path (e.g., "packages/cli")
+                # Monorepo/Subdirectory context
                 rel_path = target_path.relative_to(git_root)
-                # Flatten the path: "packages/cli" -> "packages-cli"
+
                 flat_rel_path = str(rel_path).replace("/", "-").replace("\\", "-")
                 name = f"{repo_name}--{flat_rel_path}"
 
+                # CRITICAL FIX: Use the Git Root as base, but filter for the subdir
+                ingest_path = git_root
+
+                # CHANGED: Use a set {} instead of a list []
+                include_patterns = {str(rel_path)}
+
+                self.console.print(
+                    f"[dim]Context:[/dim] Detected Git Root at [bold]{git_root.name}[/]"
+                )
+                self.console.print(
+                    f"[dim]Scope:[/dim] Restricting ingestion to [bold]{rel_path}[/]"
+                )
+
         except (subprocess.CalledProcessError, FileNotFoundError):
-            # Not a git repo or git not installed; stick to default name
             pass
 
         with self.console.status(
-            f"[bold blue]Ingesting Local Path:[/] {path}...", spinner="dots"
+            f"[bold blue]Ingesting:[/bold blue] {name}...", spinner="dots"
         ):
-            # gitingest respects .gitignore by default.
-            # Because we are running this inside a valid git repo (detected above),
-            # it will respect the root .gitignore even for subdirectories.
-            summary, tree, content = await ingest_async(path)
-        
+            # ingest_async expects include_patterns to be Set[str] | str | None
+            summary, tree, content = await ingest_async(
+                str(ingest_path), include_patterns=include_patterns
+            )
+
         self._save_report(name, summary, tree, content, output_dir)
         self.console.print(f"[bold green]✓[/] Completed: [bold cyan]{name}[/]")
 
@@ -284,7 +292,7 @@ class IngestionEngine:
         if not separate_files:
             full_content = "".join(full_content_accumulator)
             user_summary = "\n".join(user_summary_lines)
-            
+
             # CHANGED: Use just the username for the digest (e.g., "yrrrrrf.txt")
             self._save_report(
                 username,
