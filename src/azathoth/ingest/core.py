@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import httpx
+import subprocess
 from pathlib import Path
 from enum import Enum, auto
 from typing import List, Dict, Any
@@ -136,13 +137,48 @@ class IngestionEngine:
         self.console.print(f"[bold green]✓[/] Completed: [bold cyan]{name}[/]")
 
     async def process_local(self, path: str, output_dir: Path):
+        target_path = Path(path).resolve()
+        
+        # Default fallback name (current dir name)
+        name = target_path.name
+
+        # 1. Attempt to detect Git Context for standardized naming
+        #    This handles the "Monorepo" case: Repo--subdir-service
+        try:
+            # Check if this directory is part of a git repo
+            cmd = ["git", "rev-parse", "--show-toplevel"]
+            result = subprocess.run(
+                cmd, 
+                cwd=target_path, 
+                capture_output=True, 
+                text=True, 
+                check=True
+            )
+            git_root = Path(result.stdout.strip())
+            repo_name = git_root.name
+
+            if target_path == git_root:
+                # We are at the root
+                name = repo_name
+            else:
+                # We are in a subdirectory (Monorepo/Service context)
+                # Calculate relative path (e.g., "packages/cli")
+                rel_path = target_path.relative_to(git_root)
+                # Flatten the path: "packages/cli" -> "packages-cli"
+                flat_rel_path = str(rel_path).replace("/", "-").replace("\\", "-")
+                name = f"{repo_name}--{flat_rel_path}"
+
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            # Not a git repo or git not installed; stick to default name
+            pass
+
         with self.console.status(
             f"[bold blue]Ingesting Local Path:[/] {path}...", spinner="dots"
         ):
+            # gitingest respects .gitignore by default.
+            # Because we are running this inside a valid git repo (detected above),
+            # it will respect the root .gitignore even for subdirectories.
             summary, tree, content = await ingest_async(path)
-        
-        # CHANGED: Just use the resolved directory name (e.g., "azathoth")
-        name = Path(path).resolve().name
         
         self._save_report(name, summary, tree, content, output_dir)
         self.console.print(f"[bold green]✓[/] Completed: [bold cyan]{name}[/]")
