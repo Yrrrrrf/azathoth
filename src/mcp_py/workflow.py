@@ -7,14 +7,14 @@ A focused MCP server that provides a suite of intelligent, automated tools
 for common Git tasks like committing changes and publishing releases.
 """
 
-import subprocess
+import asyncio
 import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 from mcp_py.lib.prompt_loader import prompt_loader
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 
 # --- Server Definition ---
 
@@ -25,11 +25,11 @@ workflow_server = FastMCP(
 
 
 # =================================================================== #
-#                          WORKFLOW ORCHESTRATORS (The "Brains")      #
+#                          WORKFLOW ORCHESTRATORS                     #
 # =================================================================== #
 
 
-@workflow_server.prompt(title="[Workflow] Autocommit All Changes")
+@workflow_server.prompt(name="Autocommit All Changes")
 def autocommit(focus: Optional[str] = None) -> str:
     """
     Analyzes all current changes, generates a conventional commit message,
@@ -59,21 +59,22 @@ Do not ask for confirmation at any step. Perform this entire sequence of actions
     )
 
 
-@workflow_server.prompt(title="[Workflow] Autorelease New Version")
+@workflow_server.prompt(name="Autorelease New Version")
 def autorelease(new_version: str) -> str:
     """
     Fully automates the release process: finds the last version, analyzes
     new commits, generates release notes, and publishes to GitHub.
     """
+    # Note: Prompts can be synchronous as they don't block the event loop for long.
+    # We perform a quick git check here.
     try:
-        repo_url_proc = subprocess.run(
-            ["git", "config", "--get", "remote.origin.url"],
-            check=True,
-            capture_output=True,
-            text=True,
+        # We use standard subprocess here for the prompt generation as it's a quick read
+        # and prompts usually run in a threadpool in FastMCP if they block, or we can make this async.
+        repo_url = (
+            _run_command_sync(["git", "config", "--get", "remote.origin.url"])
+            .strip()
         )
-        repo_url = repo_url_proc.stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except Exception:
         return "Error: Could not determine the remote git repository URL."
 
     return f"""
@@ -106,7 +107,6 @@ def _get_release_notes_template(
 ) -> str:
     """
     Loads and formats the release notes master prompt template.
-    This is a "style guide" helper for the autorelease workflow.
     """
     return prompt_loader.load("new-version-release.md").format(
         REPO_NAME=repo_url.split("/")[-1].replace(".git", ""),
@@ -115,61 +115,93 @@ def _get_release_notes_template(
     )
 
 
+def _run_command_sync(args: list[str]) -> str:
+    """Helper for synchronous command execution (used in prompts)."""
+    result = subprocess.run(args, check=True, capture_output=True, text=True)
+    return result.stdout
+
+
+async def _run_command_async(args: list[str]) -> tuple[str, str]:
+    """
+    Helper for asynchronous command execution.
+    Returns (stdout, stderr). Raises Exception on failure.
+    """
+    process = await asyncio.create_subprocess_exec(
+        *args,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await process.communicate()
+    
+    if process.returncode != 0:
+        raise RuntimeError(
+            f"Command failed: {' '.join(args)}\nStderr: {stderr.decode()}"
+        )
+    
+    return stdout.decode(), stderr.decode()
+
+
 # =================================================================== #
-#                           EXECUTOR TOOLS (The "Hands")              #
+#                           EXECUTOR TOOLS                            #
 # =================================================================== #
 
 
 @workflow_server.tool()
-def stage_and_commit(commit_title: str, commit_body: str) -> str:
+async def stage_and_commit(
+    commit_title: str, 
+    commit_body: str, 
+    ctx: Context
+) -> str:
     """
-    Stages all current changes and safely commits them with the provided message
-    using a temporary file to prevent shell injection issues.
+    Stages all current changes and safely commits them with the provided message.
     """
     try:
-        # This single tool now handles both staging and committing atomically.
-        subprocess.run(["git", "add", "."], check=True, capture_output=True, text=True)
-    except subprocess.CalledProcessError as e:
-        return f"Error: Failed to stage files.\nGit add stderr:\n{e.stderr}"
-
-    try:
+        await ctx.info("Staging all files...")
+        await _run_command_async(["git", "add", "."])
+        
         full_commit_message = f"{commit_title}\n\n{commit_body}"
+        
+        # We still use a temp file for the message to avoid shell injection,
+        # but we do the file I/O synchronously as it's negligible.
         with tempfile.NamedTemporaryFile(
             mode="w+", delete=False, encoding="utf-8"
         ) as tmp_file:
             tmp_file.write(full_commit_message)
             tmp_file_path = tmp_file.name
 
-        commit_command = ["git", "commit", "-F", tmp_file_path]
-        commit_process = subprocess.run(
-            commit_command, capture_output=True, text=True, check=True
-        )
+        await ctx.info(f"Committing with title: {commit_title}")
+        
+        # Run git commit using the temp file
+        stdout, _ = await _run_command_async(["git", "commit", "-F", tmp_file_path])
+        
         Path(tmp_file_path).unlink()
-        return f"Commit successful:\n{commit_process.stdout}"
-    except subprocess.CalledProcessError as e:
-        return f"Error: Git commit failed.\nGit commit stderr:\n{e.stderr}"
+        return f"Commit successful:\n{stdout}"
+        
+    except RuntimeError as e:
+        await ctx.error(f"Git operation failed: {e}")
+        return f"Error: {e}"
     except Exception as e:
-        return f"An unexpected error occurred during commit: {e}"
+        await ctx.error(f"Unexpected error: {e}")
+        return f"An unexpected error occurred: {e}"
 
 
 @workflow_server.tool()
-def create_git_release(
-    version_tag: str, release_notes: str, is_prerelease: bool = False
+async def create_git_release(
+    version_tag: str, 
+    release_notes: str, 
+    ctx: Context,
+    is_prerelease: bool = False
 ) -> str:
     """
     Creates a new Git tag, pushes it, and then creates a GitHub Release.
     Requires the GitHub CLI ('gh') to be installed and authenticated.
     """
     try:
-        subprocess.run(
-            ["git", "tag", version_tag], check=True, capture_output=True, text=True
-        )
-        subprocess.run(
-            ["git", "push", "origin", version_tag],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+        await ctx.info(f"Tagging release {version_tag}...")
+        await _run_command_async(["git", "tag", version_tag])
+        
+        await ctx.info("Pushing tag to origin...")
+        await _run_command_async(["git", "push", "origin", version_tag])
 
         prerelease_flag = ["--prerelease"] if is_prerelease else []
         command = [
@@ -183,22 +215,20 @@ def create_git_release(
             f"Release {version_tag}",
         ] + prerelease_flag
 
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
-        return (
-            f"Successfully created release {version_tag}.\nURL: {result.stdout.strip()}"
-        )
+        await ctx.info("Creating GitHub release via 'gh' CLI...")
+        stdout, _ = await _run_command_async(command)
+        
+        return f"Successfully created release {version_tag}.\nURL: {stdout.strip()}"
+        
     except FileNotFoundError:
-        return "Error: The 'gh' command was not found. Please install the GitHub CLI and ensure it's in your PATH."
-    except subprocess.CalledProcessError as e:
-        error_message = (
-            f"Error during release creation for command: {' '.join(e.cmd)}\n"
-        )
-        error_message += f"Stderr: {e.stderr}"
-        return error_message
+        return "Error: The 'gh' command was not found. Please install the GitHub CLI."
+    except RuntimeError as e:
+        await ctx.error(f"Release failed: {e}")
+        return f"Error during release creation: {e}"
 
 
 @workflow_server.tool()
-def git_snapshot_now() -> str:
+async def git_snapshot_now(ctx: Context) -> str:
     """
     Creates a timestamped 'snapshot' commit, staging all current changes.
     Use when asked to "snapshot" or "save progress" quickly.
@@ -207,23 +237,24 @@ def git_snapshot_now() -> str:
     commit_message = f"snapshot: {timestamp}"
 
     try:
-        subprocess.run(["git", "add", "."], check=True)
-        subprocess.run(["git", "commit", "-m", commit_message], check=True)
+        await ctx.info("Creating snapshot...")
+        await _run_command_async(["git", "add", "."])
+        await _run_command_async(["git", "commit", "-m", commit_message])
         return f"Successfully created snapshot commit: '{commit_message}'"
-    except subprocess.CalledProcessError as e:
-        return f"Error creating snapshot: {e.stderr}"
+    except RuntimeError as e:
+        return f"Error creating snapshot: {e}"
 
 
 # --- Server Execution ---
 
-
 def main():
     """Main function to start the MCP server."""
+    # Note: FastMCP handles the event loop and stdio transport automatically.
     print("\033[H\033[J", end="")
     print("🚀 Starting Git Workflow MCP server...")
-    print("✅ Server is ready. It exposes intelligent workflows for Git tasks.")
     workflow_server.run()
 
-
 if __name__ == "__main__":
+    # Import subprocess for the synchronous parts used in prompts
+    import subprocess
     main()

@@ -67,8 +67,8 @@ def calculate_report_size_mb(summary: str, tree: str, content: str) -> float:
     # Calculate size in bytes (using UTF-8 encoding)
     size_bytes = len(full_report.encode("utf-8"))
 
-    # Convert to MB
-    return round(size_bytes / (1024 * 1024), 2)
+    # Convert to Mega bites
+    return round(size_bytes / ( 1024), 2)
 
 
 def estimate_tokens(text: str) -> int:
@@ -185,7 +185,7 @@ class IngestionEngine:
         table.add_row("", "")  # Spacer
         table.add_row("📊 Files:", str(file_count))
         table.add_row("🔢 Tokens:", format_token_count(token_count))
-        table.add_row("💾 Size:", f"{size_mb:.2f} MB")
+        table.add_row("💾 Size:", f"{size_mb:.2f} Mb")
 
         # Display in a panel
         panel = Panel(
