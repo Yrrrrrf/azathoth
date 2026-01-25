@@ -49,15 +49,6 @@ def ingest(
     # Determine type
     ingest_type = engine.detect_type(target)
 
-    console.print(
-        Panel(
-            f"Target: [bold cyan]{target}[/]\n"
-            f"Detected Type: [bold magenta]{ingest_type.name}[/]",
-            title="🚀 Ingestion Started",
-            border_style="green",
-        )
-    )
-
     async def run_ingestion():
         if ingest_type == IngestType.GITHUB_USER:
             # Pass the separate flag here

@@ -17,6 +17,7 @@ dependencies = [
 	"gitingest>=0.3.1",
 	"httpx>=0.28.1",
 	"nest-asyncio>=1.6.0", # Useful for running async code in CLI
+	"tiktoken>=0.12.0",
 ]
 
 [tool.uv.workspace]
