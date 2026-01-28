@@ -59,16 +59,13 @@ class IngestType(Enum):
 # --- Helper Functions for Size and Token Calculation ---
 
 
-def calculate_report_size_mb(summary: str, tree: str, content: str) -> float:
-    """Calculate the size of the generated report in megabytes."""
+def calculate_report_size_bytes(summary: str, tree: str, content: str) -> int:
+    """Calculate the size of the generated report in bytes."""
     # Combine all sections as they will be in the final file
     full_report = f"SUMMARY\n{'=' * 20}\n{summary}\n\nTREE\n{'=' * 20}\n{tree}\n\nCONTENT\n{'=' * 20}\n{content}"
 
     # Calculate size in bytes (using UTF-8 encoding)
-    size_bytes = len(full_report.encode("utf-8"))
-
-    # Convert to Mega bites
-    return round(size_bytes / ( 1024), 2)
+    return len(full_report.encode("utf-8"))
 
 
 def estimate_tokens(text: str) -> int:
@@ -90,6 +87,15 @@ def format_token_count(token_count: int) -> str:
         return f"{token_count / 1_000:.1f}k"
     else:
         return str(token_count)
+
+
+def format_size(size_bytes: int) -> str:
+    """Format size in human-readable format (B, KB, MB, GB, etc.)."""
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
+        if size_bytes < 1024.0:
+            return f"{size_bytes:.2f} {unit}"
+        size_bytes /= 1024.0
+    return f"{size_bytes:.2f} PB"
 
 
 def parse_summary_for_metrics(summary: str) -> tuple[int, int]:
@@ -170,7 +176,7 @@ class IngestionEngine:
         detected_type: IngestType,
         file_count: int,
         token_count: int,
-        size_mb: float,
+        size_bytes: int,
     ):
         """Display enhanced ingestion metrics in a nice table format."""
 
@@ -185,7 +191,7 @@ class IngestionEngine:
         table.add_row("", "")  # Spacer
         table.add_row("📊 Files:", str(file_count))
         table.add_row("🔢 Tokens:", format_token_count(token_count))
-        table.add_row("💾 Size:", f"{size_mb:.2f} Mb")
+        table.add_row("💾 Size:", format_size(size_bytes))
 
         # Display in a panel
         panel = Panel(
@@ -241,7 +247,7 @@ class IngestionEngine:
         file_count, token_count = parse_summary_for_metrics(summary)
 
         # Calculate the size of the generated report
-        report_size_mb = calculate_report_size_mb(summary, tree, content)
+        report_size_bytes = calculate_report_size_bytes(summary, tree, content)
 
         # CHANGED: Use the helper to generate the source-agnostic name
         name = self._generate_filename_from_url(url)
@@ -252,7 +258,7 @@ class IngestionEngine:
             detected_type=IngestType.GITHUB_REPO,
             file_count=file_count,
             token_count=token_count,
-            size_mb=report_size_mb,
+            size_bytes=report_size_bytes,
         )
 
         self._save_report(name, summary, tree, content, output_dir)
@@ -312,7 +318,7 @@ class IngestionEngine:
         file_count, token_count = parse_summary_for_metrics(summary)
 
         # Calculate the size of the generated report
-        report_size_mb = calculate_report_size_mb(summary, tree, content)
+        report_size_bytes = calculate_report_size_bytes(summary, tree, content)
 
         # Display enhanced metrics
         self._display_ingestion_metrics(
@@ -320,7 +326,7 @@ class IngestionEngine:
             detected_type=IngestType.LOCAL,
             file_count=file_count,
             token_count=token_count,
-            size_mb=report_size_mb,
+            size_bytes=report_size_bytes,
         )
 
         self._save_report(name, summary, tree, content, output_dir)
