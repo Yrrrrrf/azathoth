@@ -1,0 +1,13 @@
+[meta]
+name = "Core Philosophy"
+version = "1.0.0"
+applies_to = ["*"]
+
+[rules]
+modernity = "Use latest, stable, and idiomatic syntax. Avoid deprecated features."
+functional_patterns = "Prefer functional constructs (maps, comprehensions) over imperative loops for data transformation."
+readability = "Prioritize human readability. Use concise constructs for simple logic, but expand for non-trivial logic."
+comments = "Comment on 'why', not 'what'. Focus on complex logic, algorithms, or business rules."
+simplicity = "Favor simplicity. Avoid over-engineering and premature optimization."
+strict_typing = "All code for typed languages (Python, TypeScript, etc.) MUST be fully and accurately type-hinted. Non-negotiable."
+error_handling = "Never fail silently. Implement graceful error handling with meaningful messages."
