@@ -8,14 +8,14 @@ app = typer.Typer(
     help="Azathoth: Dual-Protocol AI Intelligence Layer",
     no_args_is_help=True,
     add_completion=True,
-    rich_markup_mode="rich"
+    rich_markup_mode="rich",
 )
+
 
 def init_cli():
     """Register all CLI commands and start the app."""
     # from azathoth.cli.callbacks import register_callbacks
     # from azathoth.cli.commands import register_commands
-
 
     app.command(name="ls")(ls_cmd)
     app.command(name="ingest")(ingest_cmd)

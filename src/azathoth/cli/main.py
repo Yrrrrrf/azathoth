@@ -6,7 +6,7 @@ from azathoth.cli.commands import workflow
 app = typer.Typer(
     name="az",
     help="Azathoth: Dual-Protocol AI Intelligence Layer",
-    no_args_is_help=True
+    no_args_is_help=True,
 )
 
 app.command(name="ls")(ls_cmd)

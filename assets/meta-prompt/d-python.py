@@ -61,7 +61,7 @@ def process_file(file_path: Path) -> JsonPayload | None:
 
                 return {"file": file_path.name, "type": payload_type, "count": count}
 
-            except (json.JSONDecodeError, UnicodeDecodeError):
+            except json.JSONDecodeError, UnicodeDecodeError:
                 console.print(
                     f"[bold red]Error parsing invalid JSON file: {file_path.name}[/bold red]"
                 )

@@ -13,9 +13,7 @@ class IngestResult(BaseModel):
 
 
 async def to_txt(
-    targets: List[str], 
-    root_path: str = ".", 
-    include_header: bool = True
+    targets: List[str], root_path: str = ".", include_header: bool = True
 ) -> IngestResult:
     """
     Ingests multiple files/globs into a single string.
@@ -24,7 +22,7 @@ async def to_txt(
     full_content = []
     processed_files = []
     total_tokens = 0
-    
+
     for target in targets:
         # Handle globs
         for item in root.glob(target):
@@ -32,14 +30,14 @@ async def to_txt(
                 try:
                     content = item.read_text(errors="ignore")
                     rel_path = item.relative_to(root)
-                    
+
                     file_block = []
                     if include_header:
                         file_block.append(f"--- FILE: {rel_path} ---")
-                    
+
                     file_block.append(content)
                     file_block.append("\n")
-                    
+
                     block_text = "\n".join(file_block)
                     full_content.append(block_text)
                     processed_files.append(str(rel_path))
@@ -48,10 +46,10 @@ async def to_txt(
                     continue
 
     final_text = "\n".join(full_content)
-    
+
     return IngestResult(
         content=final_text,
         token_count=total_tokens,
         file_count=len(processed_files),
-        files=processed_files
+        files=processed_files,
     )

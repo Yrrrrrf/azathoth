@@ -19,45 +19,50 @@ async def scout(target_directory: str = ".") -> ScoutReport:
     Analyzes a codebase to identify structure, language, and context.
     """
     root = Path(target_directory).resolve()
-    
+
     # 1. Reconnaissance
     structure = await list_directory(str(root), recursive=True)
-    
+
     # 2. Identify Language (heuristic based on manifest files)
     language = "unknown"
     manifests = {
         "pyproject.toml": "python",
-        "package.json": "typescript", # or javascript
+        "package.json": "typescript",  # or javascript
         "Cargo.toml": "rust",
         "go.mod": "go",
         "build.gradle": "kotlin",
-        "pom.xml": "java"
+        "pom.xml": "java",
     }
-    
+
     for manifest, lang in manifests.items():
         if (root / manifest).exists():
             language = lang
             break
-            
+
     # 3. Load Directives
     master_context = await get_master_context([language])
-    
+
     # 4. Find Entry Point (heuristic)
     entry_points = [
-        "main.py", "app.py", "src/main.rs", "src/index.ts", 
-        "index.js", "src/app.ts", "main.go"
+        "main.py",
+        "app.py",
+        "src/main.rs",
+        "src/index.ts",
+        "index.js",
+        "src/app.ts",
+        "main.go",
     ]
     found_entry = None
     for ep in entry_points:
         if (root / ep).exists():
             found_entry = ep
             break
-            
+
     return ScoutReport(
         directory=str(root),
         structure=structure,
         primary_language=language,
         directives_loaded=["core", language],
         master_context=master_context,
-        entry_point=found_entry
+        entry_point=found_entry,
     )

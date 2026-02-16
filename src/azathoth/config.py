@@ -14,20 +14,20 @@ _CONFIG_FILE = _CONFIG_DIR / "config.toml"
 class Settings(BaseSettings):
     # MCP Server
     mcp_port: int = Field(default=8001)
-    
+
     # A2A Agent
     agent_port: int = Field(default=8002)
-    
+
     # Paths
     config_dir: Path = Field(default=_CONFIG_DIR)
-    
+
     # Defaults
     default_ingest_format: str = "txt"
     token_model: str = "cl100k_base"
-    
+
     # ERGONOMICS: Directly to Downloads, no subfolder
     default_output_dir: Path = Field(default=Path.home() / "Downloads")
-    
+
     model_config = SettingsConfigDict(
         env_prefix="AZATHOTH_",
         extra="ignore",

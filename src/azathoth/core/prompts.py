@@ -1,5 +1,6 @@
 from typing import Optional
 
+
 def get_scout_prompt(target_directory: str) -> str:
     return f"""
 You are an expert software architect acting as a 'Code Scout'. Your mission is to explore the codebase in '{target_directory}' and produce a high-level overview report, adapted to the project's specific coding philosophy.
@@ -43,6 +44,7 @@ You MUST base your entire analysis on the output of the tools you run.
 ---
 """
 
+
 def get_commit_prompt(focus: Optional[str] = None) -> str:
     focus_section = ""
     if focus:
@@ -67,6 +69,7 @@ THE ZERO LAW OF GIT COMMITS:
 Do not ask for confirmation at any step. Perform this entire sequence of actions directly.
 {focus_section}
 """
+
 
 def get_release_prompt(new_version: str, repo_url: str, old_version: str) -> str:
     repo_name = repo_url.split("/")[-1].replace(".git", "")
