@@ -1,9 +1,8 @@
 import os
-import tiktoken
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
-from azathoth.config import config
+from azathoth.core.utils import estimate_tokens
 
 
 class IngestResult(BaseModel):
@@ -11,15 +10,6 @@ class IngestResult(BaseModel):
     token_count: int
     file_count: int
     files: List[str]
-
-
-def estimate_tokens(text: str) -> int:
-    """Estimates tokens using tiktoken."""
-    try:
-        encoding = tiktoken.get_encoding(config.token_model)
-        return len(encoding.encode(text))
-    except Exception:
-        return len(text) // 4
 
 
 async def to_txt(

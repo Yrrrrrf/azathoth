@@ -3,7 +3,7 @@ name = "azathoth"
 version = "0.1.0"
 description = "Azathoth: Dual-Protocol AI Intelligence Layer (MCP + A2A)"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 license = { file = "LICENSE" }
 authors = [
     { name = "Fernando Bryan Reza Campos", email = "fer.rezac@outlook.com" },
@@ -26,6 +26,9 @@ mcp = [
 agent = [
     "a2a-sdk[http-server]>=0.3.22",
 ]
+clipboard = [
+    "pyperclip>=1.11.0",
+]
 dev = [
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
@@ -36,14 +39,7 @@ dev = [
 
 [project.scripts]
 az = "azathoth.cli.main:app"
-
-[tool.uv]
-managed = true
-package = true
-
-[tool.ruff]
-line-length = 88
-target-version = "py312"
+azathoth = "azathoth.cli.main:app"
 
 [tool.pyright]
 include = ["src/azathoth"]
