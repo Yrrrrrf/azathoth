@@ -1,6 +1,6 @@
 [project]
 name = "azathoth"
-version = "0.1.0"
+version = "0.0.2"
 description = "Azathoth: Dual-Protocol AI Intelligence Layer (MCP + A2A)"
 readme = "README.md"
 requires-python = ">=3.14"

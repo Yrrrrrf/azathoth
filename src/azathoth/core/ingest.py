@@ -19,7 +19,7 @@ class IngestType(Enum):
 class IngestionMetrics(BaseModel):
     file_count: int
     token_count: int
-    size_bytes: int
+    size_bytes: int = 0
 
 
 class IngestionResult(BaseModel):
@@ -72,17 +72,82 @@ def detect_type(target: str) -> IngestType:
 
 
 async def ingest(
-    target: str,
+    path: str,
+    list_only: bool = False,
     include_patterns: Optional[Set[str]] = None,
     exclude_patterns: Optional[Set[str]] = None,
 ) -> IngestionResult:
     """
-    Pure logic for ingesting a single repository or directory.
+    Pure logic for ingesting a single repository, directory, or file.
+    """
+    target = Path(path).resolve() if Path(path).exists() else None
+
+    if target and target.is_file():
+        return await _ingest_file(target)
+    else:
+        return await _ingest_directory(
+            path,
+            list_only=list_only,
+            include_patterns=include_patterns,
+            exclude_patterns=exclude_patterns,
+        )
+
+
+async def _ingest_file(path: Path) -> IngestionResult:
+    """Ingests a single file. Same output shape as a repo ingest."""
+    content = path.read_text(errors="ignore")
+    tokens = estimate_tokens(content)
+
+    # Context awareness: find git root to show relative path
+    display_path = path.name
+    suggested_name = path.stem
+    try:
+        cmd = ["git", "rev-parse", "--show-toplevel"]
+        result = subprocess.run(
+            cmd, cwd=path.parent, capture_output=True, text=True, check=True
+        )
+        git_root = Path(result.stdout.strip())
+        rel_path = path.relative_to(git_root)
+        display_path = str(rel_path)
+        flat_rel = str(rel_path).replace("/", "-").replace("\\", "-")
+        # Strip extension for suggested name if it's a long path
+        flat_name = flat_rel.rsplit(".", 1)[0] if "." in flat_rel else flat_rel
+        suggested_name = f"{git_root.name}--{flat_name}"
+    except subprocess.CalledProcessError, FileNotFoundError, ValueError:
+        pass
+
+    formatted_content = f"FILE: {display_path}\n{'=' * 60}\n{content}"
+
+    return IngestionResult(
+        summary=f"Single file: {display_path}",
+        tree=display_path,
+        content=formatted_content,
+        suggested_filename=suggested_name,
+        metrics=IngestionMetrics(
+            file_count=1,
+            token_count=tokens,
+            size_bytes=len(formatted_content.encode("utf-8")),
+        ),
+        detected_type=IngestType.LOCAL.name,
+    )
+
+
+async def _ingest_directory(
+    target: str,
+    list_only: bool = False,
+    include_patterns: Optional[Set[str]] = None,
+    exclude_patterns: Optional[Set[str]] = None,
+) -> IngestionResult:
+    """
+    Ingests a directory or remote repository.
     """
     # 1. Perform ingestion
     summary, tree, content = await ingest_async(
         target, include_patterns=include_patterns, exclude_patterns=exclude_patterns
     )
+
+    if list_only:
+        content = "(Content omitted due to --list flag)"
 
     # 2. Extract metrics
     file_count, token_count = _parse_summary_metrics(summary)
@@ -185,18 +250,23 @@ async def _generate_filename(target: str) -> str:
 
 async def get_subpath_context(target: str) -> Optional[tuple[str, str]]:
     """Monorepo subdirectory detection."""
-    target_path = Path(target).resolve()
-    if not target_path.is_dir():
+    # Handle files too: check parent directory
+    p = Path(target).resolve()
+    if not p.exists():
         return None
+
+    target_dir = p if p.is_dir() else p.parent
 
     try:
         cmd = ["git", "rev-parse", "--show-toplevel"]
         result = subprocess.run(
-            cmd, cwd=target_path, capture_output=True, text=True, check=True
+            cmd, cwd=target_dir, capture_output=True, text=True, check=True
         )
         git_root = Path(result.stdout.strip())
-        if target_path != git_root:
-            return git_root.name, str(target_path.relative_to(git_root))
-    except subprocess.CalledProcessError, FileNotFoundError:
+        if target_dir != git_root or not p.is_dir():
+            # If it's a file, we always want the relative path from root
+            rel_path = p.relative_to(git_root)
+            return git_root.name, str(rel_path)
+    except subprocess.CalledProcessError, FileNotFoundError, ValueError:
         pass
     return None

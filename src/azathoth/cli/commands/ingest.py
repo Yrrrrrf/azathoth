@@ -58,13 +58,14 @@ class StatusSpinnerColumn(ProgressColumn):
         return self.spinner.render(task)
 
 
-def _display_info_panel(target: str, detected_type: IngestType):
+def _display_info_panel(target: str, detected_type: IngestType, mode: str):
     """The blue info panel at the start."""
     table = Table(show_header=False, box=None, padding=(0, 1))
     table.add_column(style="dim")
     table.add_column(style="bold cyan")
     table.add_row("Target:", target)
     table.add_row("Type:", detected_type.name)
+    table.add_row("Mode:", mode)
 
     panel = Panel(
         table,
@@ -75,7 +76,7 @@ def _display_info_panel(target: str, detected_type: IngestType):
     console.print(panel)
 
 
-def _display_metrics_panel(result: IngestionResult, save_path: Path):
+def _display_metrics_panel(result: IngestionResult, save_path: Optional[Path]):
     """The green summary panel at the end."""
     table = Table(show_header=False, box=None, padding=(0, 1))
     table.add_column(style="dim")
@@ -84,7 +85,8 @@ def _display_metrics_panel(result: IngestionResult, save_path: Path):
     table.add_row("Files", str(result.metrics.file_count))
     table.add_row("Tokens", f"{result.metrics.token_count:,}")
     table.add_row("Size", format_size(result.metrics.size_bytes))
-    table.add_row("Saved to", f"@{save_path}")
+    if save_path:
+        table.add_row("Saved to", f"@{save_path}")
 
     panel = Panel(
         table,
@@ -119,9 +121,24 @@ def list_reports():
 
 
 async def _ingest_single(
-    target: str, output: Optional[Path], fmt: str, clipboard: bool
+    target: str,
+    list_only: bool,
+    save: bool,
+    output: Optional[Path],
+    fmt: str,
+    clipboard: bool,
 ):
     """Handles ingestion for a single target."""
+    target_path = Path(target).resolve() if Path(target).exists() else None
+
+    # Determine mode string for display
+    if target_path and target_path.is_file():
+        mode = f"Single file → [bold]{target_path.name}[/]"
+    elif list_only:
+        mode = "Structure only [dim](--list)[/]"
+    else:
+        mode = "Full ingest"
+
     ctx = await get_subpath_context(target)
     if ctx:
         root_name, rel_path = ctx
@@ -131,33 +148,35 @@ async def _ingest_single(
         )
 
     itype = detect_type(target)
-    _display_info_panel(target, itype)
+    _display_info_panel(target, itype, mode)
 
     with console.status(f"⠋ Ingesting [cyan]{target}[/cyan]...", spinner="dots"):
         try:
-            result = await ingest(target)
+            result = await ingest(target, list_only=list_only)
         except Exception as e:
             console.print(f"[bold red]✗ Ingestion failed:[/] {e}")
             raise typer.Exit(1)
 
     # Determine save path
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{result.suggested_filename}-{timestamp}.{fmt}"
-    save_path = output or (config.reports_dir / filename)
+    save_path = None
+    if save or output:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        list_tag = "-list" if list_only else ""
+        filename = f"{result.suggested_filename}{list_tag}-{timestamp}.{fmt}"
+        save_path = output or (config.reports_dir / filename)
 
-    full_report = result.format_report(fmt=fmt)
-    save_path.write_text(full_report, encoding="utf-8")
+        full_report = result.format_report(fmt=fmt)
+        save_path.write_text(full_report, encoding="utf-8")
 
     if clipboard:
         try:
             import pyperclip
 
-            pyperclip.copy(full_report)
+            pyperclip.copy(result.format_report(fmt=fmt))
             console.print("[dim]→ Copied to clipboard[/]")
         except ImportError:
-            pass
+            console.print("[yellow]→ Clipboard failed: pyperclip not installed[/]")
 
-    # REDUNDANT MESSAGES REMOVED — ONLY THE PANEL REMAINS
     _display_metrics_panel(result, save_path)
 
 
@@ -225,23 +244,36 @@ async def _ingest_user(target: str, output_dir: Path, fmt: str, separate: bool):
 def main(
     ctx: typer.Context,
     target: Optional[str] = typer.Argument(None, help="Path, GitHub URL, or Username"),
+    list_only: bool = typer.Option(
+        False, "--list", "-l", help="Structure only, no file content"
+    ),
+    save: bool = typer.Option(True, "--save/--no-save", help="Save report to file"),
     output: Optional[Path] = typer.Option(
         None, "--output", "-o", help="Custom output path"
     ),
     format: str = typer.Option("txt", "--format", "-f", help="txt, md, xml"),
-    clipboard: bool = typer.Option(False, "--clipboard", "-c"),
+    clipboard: bool = typer.Option(
+        False, "--clipboard", "-c", help="Copy to clipboard"
+    ),
     separate: bool = typer.Option(
         False, "--separate", "-s", help="Split user repos into files"
     ),
-    list_flag: bool = typer.Option(False, "--list", "-l", help="List reports"),
+    list_reports_flag: bool = typer.Option(
+        False, "--reports", help="List saved reports"
+    ),
 ):
-    """Pack code into LLM context. Automatically detects type."""
-    if list_flag:
+    """
+    Ingest a file or directory into an LLM-ready text format.
+
+    Works on a single file, a directory, or a full repo.
+    Use --list to get structure only (no content).
+    """
+    if list_reports_flag:
         list_reports()
         return
 
     if not target:
-        console.print("[yellow]Usage: az ingest [TARGET] or az ingest --list[/]")
+        console.print("[yellow]Usage: az ingest [TARGET] or az ingest --reports[/]")
         return
 
     async def _run():
@@ -249,6 +281,6 @@ def main(
         if itype == IngestType.GITHUB_USER:
             await _ingest_user(target, output or config.reports_dir, format, separate)
         else:
-            await _ingest_single(target, output, format, clipboard)
+            await _ingest_single(target, list_only, save, output, format, clipboard)
 
     asyncio.run(_run())

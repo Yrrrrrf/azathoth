@@ -1,13 +1,13 @@
 from pathlib import Path
 from typing import List, Optional
 from pydantic import BaseModel
-from azathoth.core.ls import list_directory, DirectoryListing
+from azathoth.core.ingest import ingest, IngestionResult
 from azathoth.core.directives import get_master_context
 
 
 class ScoutReport(BaseModel):
     directory: str
-    structure: DirectoryListing
+    result: IngestionResult
     primary_language: str
     directives_loaded: List[str]
     master_context: str
@@ -21,7 +21,7 @@ async def scout(target_directory: str = ".") -> ScoutReport:
     root = Path(target_directory).resolve()
 
     # 1. Reconnaissance
-    structure = await list_directory(str(root), recursive=True)
+    result = await ingest(str(root), list_only=True)
 
     # 2. Identify Language (heuristic based on manifest files)
     language = "unknown"
@@ -60,7 +60,7 @@ async def scout(target_directory: str = ".") -> ScoutReport:
 
     return ScoutReport(
         directory=str(root),
-        structure=structure,
+        result=result,
         primary_language=language,
         directives_loaded=["core", language],
         master_context=master_context,
