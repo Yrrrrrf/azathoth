@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 
 import typer
 from rich.console import Console, RenderableType
@@ -58,7 +58,9 @@ class StatusSpinnerColumn(ProgressColumn):
         return self.spinner.render(task)
 
 
-def _display_info_panel(target: str, detected_type: IngestType, mode: str, ignore_gitignore: bool = False):
+def _display_info_panel(
+    target: str, detected_type: IngestType, mode: str, ignore_gitignore: bool = False
+):
     """The blue info panel at the start."""
     table = Table(show_header=False, box=None, padding=(0, 1))
     table.add_column(style="dim")
@@ -155,7 +157,9 @@ async def _ingest_single(
 
     with console.status(f"⠋ Ingesting [cyan]{target}[/cyan]...", spinner="dots"):
         try:
-            result = await ingest(target, list_only=list_only, ignore_gitignore=ignore_gitignore)
+            result = await ingest(
+                target, list_only=list_only, ignore_gitignore=ignore_gitignore
+            )
         except Exception as e:
             console.print(f"[bold red]✗ Ingestion failed:[/] {e}")
             raise typer.Exit(1)
@@ -183,7 +187,13 @@ async def _ingest_single(
     _display_metrics_panel(result, save_path)
 
 
-async def _ingest_user(target: str, output_dir: Path, fmt: str, separate: bool, ignore_gitignore: bool = False):
+async def _ingest_user(
+    target: str,
+    output_dir: Path,
+    fmt: str,
+    separate: bool,
+    ignore_gitignore: bool = False,
+):
     """Concurrent multi-repo ingestion for GitHub users."""
     username = target.rstrip("/").split("/")[-1]
 
@@ -217,7 +227,9 @@ async def _ingest_user(target: str, output_dir: Path, fmt: str, separate: bool, 
         async def _work(repo: Dict[str, Any]):
             async with semaphore:
                 try:
-                    res = await ingest(repo["clone_url"], ignore_gitignore=ignore_gitignore)
+                    res = await ingest(
+                        repo["clone_url"], ignore_gitignore=ignore_gitignore
+                    )
                     if separate:
                         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                         path = (
@@ -250,7 +262,9 @@ def main(
         False, "--list", "-l", help="Structure only, no file content"
     ),
     ignore_gitignore: bool = typer.Option(
-        False, "--no-git-ignore", help="Ignore .gitignore patterns and ingest everything"
+        False,
+        "--no-git-ignore",
+        help="Ignore .gitignore patterns and ingest everything",
     ),
     save: bool = typer.Option(True, "--save/--no-save", help="Save report to file"),
     output: Optional[Path] = typer.Option(
@@ -281,8 +295,22 @@ def main(
     async def _run():
         itype = detect_type(target)
         if itype == IngestType.GITHUB_USER:
-            await _ingest_user(target, output or config.reports_dir, format, separate, ignore_gitignore=ignore_gitignore)
+            await _ingest_user(
+                target,
+                output or config.reports_dir,
+                format,
+                separate,
+                ignore_gitignore=ignore_gitignore,
+            )
         else:
-            await _ingest_single(target, list_only, save, output, format, clipboard, ignore_gitignore=ignore_gitignore)
+            await _ingest_single(
+                target,
+                list_only,
+                save,
+                output,
+                format,
+                clipboard,
+                ignore_gitignore=ignore_gitignore,
+            )
 
     asyncio.run(_run())

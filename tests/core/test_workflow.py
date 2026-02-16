@@ -1,5 +1,4 @@
 import pytest
-from pathlib import Path
 from azathoth.core.workflow import stage_all, commit, get_diff
 
 

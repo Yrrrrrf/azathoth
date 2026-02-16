@@ -1,4 +1,3 @@
-import pytest
 from azathoth.core.directives import Directive, DirectiveMeta
 
 

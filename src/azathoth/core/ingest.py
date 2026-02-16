@@ -1,4 +1,3 @@
-import asyncio
 import httpx
 import subprocess
 from pathlib import Path
@@ -144,11 +143,46 @@ async def _ingest_directory(
     """
     Ingests a directory or remote repository.
     """
+    ingest_target = target
+    p_target = Path(target).resolve() if Path(target).exists() else None
+
+    # Git-aware local ingestion: if we're in a subdirectory of a git repo,
+    # ingest from the root to ensure .gitignore is properly applied.
+    if p_target and p_target.is_dir() and not ignore_gitignore:
+        try:
+            cmd = ["git", "rev-parse", "--show-toplevel"]
+            res = subprocess.run(
+                cmd, cwd=p_target, capture_output=True, text=True, check=True
+            )
+            git_root = Path(res.stdout.strip())
+
+            if git_root != p_target and p_target.is_relative_to(git_root):
+                rel_path = p_target.relative_to(git_root)
+                ingest_target = str(git_root)
+
+                # Adjust patterns to be relative to git_root
+                if include_patterns:
+                    new_inc = set()
+                    for pat in include_patterns:
+                        new_inc.add(str(rel_path / pat.lstrip("/")))
+                    include_patterns = new_inc
+                else:
+                    # If no include patterns, focus on the target subdirectory
+                    include_patterns = {f"{rel_path}/**"}
+
+                if exclude_patterns:
+                    new_exc = set()
+                    for pat in exclude_patterns:
+                        new_exc.add(str(rel_path / pat.lstrip("/")))
+                    exclude_patterns = new_exc
+        except subprocess.CalledProcessError, FileNotFoundError, ValueError:
+            pass
+
     # 1. Perform ingestion
     summary, tree, content = await ingest_async(
-        target,
-        include_patterns=include_patterns,
-        exclude_patterns=exclude_patterns,
+        ingest_target,
+        include_patterns=list(include_patterns) if include_patterns else None,
+        exclude_patterns=list(exclude_patterns) if exclude_patterns else None,
         include_gitignored=ignore_gitignore,
     )
 

@@ -1,7 +1,5 @@
-import shutil
 import pytest
 import subprocess
-from pathlib import Path
 
 
 @pytest.fixture
