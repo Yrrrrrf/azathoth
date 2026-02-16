@@ -58,7 +58,7 @@ class StatusSpinnerColumn(ProgressColumn):
         return self.spinner.render(task)
 
 
-def _display_info_panel(target: str, detected_type: IngestType, mode: str):
+def _display_info_panel(target: str, detected_type: IngestType, mode: str, ignore_gitignore: bool = False):
     """The blue info panel at the start."""
     table = Table(show_header=False, box=None, padding=(0, 1))
     table.add_column(style="dim")
@@ -66,6 +66,8 @@ def _display_info_panel(target: str, detected_type: IngestType, mode: str):
     table.add_row("Target:", target)
     table.add_row("Type:", detected_type.name)
     table.add_row("Mode:", mode)
+    if ignore_gitignore:
+        table.add_row("Ignore Gitignore:", "[bold yellow]Yes[/]")
 
     panel = Panel(
         table,
@@ -127,6 +129,7 @@ async def _ingest_single(
     output: Optional[Path],
     fmt: str,
     clipboard: bool,
+    ignore_gitignore: bool = False,
 ):
     """Handles ingestion for a single target."""
     target_path = Path(target).resolve() if Path(target).exists() else None
@@ -148,11 +151,11 @@ async def _ingest_single(
         )
 
     itype = detect_type(target)
-    _display_info_panel(target, itype, mode)
+    _display_info_panel(target, itype, mode, ignore_gitignore=ignore_gitignore)
 
     with console.status(f"⠋ Ingesting [cyan]{target}[/cyan]...", spinner="dots"):
         try:
-            result = await ingest(target, list_only=list_only)
+            result = await ingest(target, list_only=list_only, ignore_gitignore=ignore_gitignore)
         except Exception as e:
             console.print(f"[bold red]✗ Ingestion failed:[/] {e}")
             raise typer.Exit(1)
@@ -180,7 +183,7 @@ async def _ingest_single(
     _display_metrics_panel(result, save_path)
 
 
-async def _ingest_user(target: str, output_dir: Path, fmt: str, separate: bool):
+async def _ingest_user(target: str, output_dir: Path, fmt: str, separate: bool, ignore_gitignore: bool = False):
     """Concurrent multi-repo ingestion for GitHub users."""
     username = target.rstrip("/").split("/")[-1]
 
@@ -214,7 +217,7 @@ async def _ingest_user(target: str, output_dir: Path, fmt: str, separate: bool):
         async def _work(repo: Dict[str, Any]):
             async with semaphore:
                 try:
-                    res = await ingest(repo["clone_url"])
+                    res = await ingest(repo["clone_url"], ignore_gitignore=ignore_gitignore)
                     if separate:
                         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                         path = (
@@ -240,12 +243,14 @@ async def _ingest_user(target: str, output_dir: Path, fmt: str, separate: bool):
         )
 
 
-@app.callback(invoke_without_command=True)
 def main(
     ctx: typer.Context,
     target: Optional[str] = typer.Argument(None, help="Path, GitHub URL, or Username"),
     list_only: bool = typer.Option(
         False, "--list", "-l", help="Structure only, no file content"
+    ),
+    ignore_gitignore: bool = typer.Option(
+        False, "--no-git-ignore", help="Ignore .gitignore patterns and ingest everything"
     ),
     save: bool = typer.Option(True, "--save/--no-save", help="Save report to file"),
     output: Optional[Path] = typer.Option(
@@ -263,24 +268,21 @@ def main(
     ),
 ):
     """
-    Ingest a file or directory into an LLM-ready text format.
-
-    Works on a single file, a directory, or a full repo.
-    Use --list to get structure only (no content).
+    Ingest codebases into a single file.
     """
     if list_reports_flag:
         list_reports()
         return
 
     if not target:
-        console.print("[yellow]Usage: az ingest [TARGET] or az ingest --reports[/]")
+        console.print(ctx.get_help())
         return
 
     async def _run():
         itype = detect_type(target)
         if itype == IngestType.GITHUB_USER:
-            await _ingest_user(target, output or config.reports_dir, format, separate)
+            await _ingest_user(target, output or config.reports_dir, format, separate, ignore_gitignore=ignore_gitignore)
         else:
-            await _ingest_single(target, list_only, save, output, format, clipboard)
+            await _ingest_single(target, list_only, save, output, format, clipboard, ignore_gitignore=ignore_gitignore)
 
     asyncio.run(_run())

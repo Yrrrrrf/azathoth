@@ -76,6 +76,7 @@ async def ingest(
     list_only: bool = False,
     include_patterns: Optional[Set[str]] = None,
     exclude_patterns: Optional[Set[str]] = None,
+    ignore_gitignore: bool = False,
 ) -> IngestionResult:
     """
     Pure logic for ingesting a single repository, directory, or file.
@@ -90,6 +91,7 @@ async def ingest(
             list_only=list_only,
             include_patterns=include_patterns,
             exclude_patterns=exclude_patterns,
+            ignore_gitignore=ignore_gitignore,
         )
 
 
@@ -137,13 +139,17 @@ async def _ingest_directory(
     list_only: bool = False,
     include_patterns: Optional[Set[str]] = None,
     exclude_patterns: Optional[Set[str]] = None,
+    ignore_gitignore: bool = False,
 ) -> IngestionResult:
     """
     Ingests a directory or remote repository.
     """
     # 1. Perform ingestion
     summary, tree, content = await ingest_async(
-        target, include_patterns=include_patterns, exclude_patterns=exclude_patterns
+        target,
+        include_patterns=include_patterns,
+        exclude_patterns=exclude_patterns,
+        include_gitignored=ignore_gitignore,
     )
 
     if list_only:
