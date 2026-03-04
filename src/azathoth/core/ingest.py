@@ -114,7 +114,7 @@ async def _ingest_file(path: Path) -> IngestionResult:
         # Strip extension for suggested name if it's a long path
         flat_name = flat_rel.rsplit(".", 1)[0] if "." in flat_rel else flat_rel
         suggested_name = f"{git_root.name}--{flat_name}"
-    except subprocess.CalledProcessError, FileNotFoundError, ValueError:
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
         pass
 
     formatted_content = f"FILE: {display_path}\n{'=' * 60}\n{content}"

@@ -1,5 +1,6 @@
+import os
 from pathlib import Path
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -11,7 +12,19 @@ _CONFIG_DIR = Path.home() / ".config" / "azathoth"
 _CONFIG_FILE = _CONFIG_DIR / "config.toml"
 
 
+def _resolve_api_key() -> SecretStr:
+    """Check AZATHOTH_GEMINI_API_KEY first, then fall back to GEMINI_API_KEY."""
+    key = os.environ.get("AZATHOTH_GEMINI_API_KEY") or os.environ.get(
+        "GEMINI_API_KEY", ""
+    )
+    return SecretStr(key)
+
+
 class Settings(BaseSettings):
+    # ── LLM ──────────────────────────────────────────────
+    gemini_api_key: SecretStr = Field(default_factory=_resolve_api_key)
+    gemini_model: str = "gemini-3.1-flash-lite-preview"
+
     # MCP Server
     mcp_port: int = Field(default=8001)
 
