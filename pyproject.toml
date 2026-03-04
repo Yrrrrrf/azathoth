@@ -18,10 +18,10 @@ dependencies = [
     "httpx>=0.28.1",
     "gitingest>=0.3.1",
     "google-genai>=1.66.0",
+    "fastmcp>=3.1.0",
 ]
 
 [project.optional-dependencies]
-mcp = ["fastmcp>=3.1.0"]
 agent = ["a2a-sdk[http-server]>=0.3.24"]
 clipboard = ["pyperclip>=1.11.0"]
 dev = [
@@ -35,6 +35,7 @@ dev = [
 [project.scripts]
 az = "azathoth.cli.main:app"
 azathoth = "azathoth.cli.main:app"
+workflow = "azathoth.mcp.workflow:run"
 
 [tool.pyright]
 include = ["src/azathoth"]
