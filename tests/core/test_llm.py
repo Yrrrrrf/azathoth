@@ -13,7 +13,7 @@ def mock_config():
     """Provide a fake config with a valid API key."""
     with patch("azathoth.core.llm.config") as cfg:
         cfg.gemini_api_key.get_secret_value.return_value = "fake-key"
-        cfg.gemini_model = "gemini-2.0-flash"
+        cfg.gemini_model = "gemini-3.1-flash-lite-preview"
         yield cfg
 
 
@@ -69,7 +69,7 @@ async def test_generate_missing_key_raises():
     """Missing API key should raise LLMError early."""
     with patch("azathoth.core.llm.config") as cfg:
         cfg.gemini_api_key.get_secret_value.return_value = ""
-        cfg.gemini_model = "gemini-2.0-flash"
+        cfg.gemini_model = "gemini-3.1-flash-lite-preview"
         with pytest.raises(LLMError, match="API key not set"):
             await generate("system", "user")
 
