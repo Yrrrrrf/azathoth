@@ -39,8 +39,7 @@ async def generate(
     api_key = config.gemini_api_key.get_secret_value()
     if not api_key:
         raise LLMError(
-            "Gemini API key not set. "
-            "Export GEMINI_API_KEY or AZATHOTH_GEMINI_API_KEY."
+            "Gemini API key not set. Export GEMINI_API_KEY or AZATHOTH_GEMINI_API_KEY."
         )
 
     try:
@@ -67,4 +66,3 @@ async def generate(
         raise
     except Exception as exc:
         raise LLMError(f"Gemini API call failed: {exc}") from exc
-

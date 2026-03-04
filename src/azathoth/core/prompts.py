@@ -151,4 +151,3 @@ Analyze the commits and produce a single JSON object with exactly two keys:
 - [Chore/refactor 1]
 
 Omit any empty sections. Output ONLY the JSON object, nothing else."""
-

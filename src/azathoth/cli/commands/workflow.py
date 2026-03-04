@@ -56,17 +56,13 @@ def commit_cmd(
             console.print("[yellow]No staged changes — nothing to commit.[/]")
             raise typer.Exit()
 
-        console.print(
-            f"[dim]Staged diff: {len(diff):,} chars[/]"
-        )
+        console.print(f"[dim]Staged diff: {len(diff):,} chars[/]")
 
         # 2. Ask Gemini
         system_prompt = get_commit_system_prompt(focus)
         with console.status("[bold cyan]Generating commit message…[/]"):
             try:
-                raw = await asyncio.to_thread(
-                    _sync_generate, system_prompt, diff, True
-                )
+                raw = await asyncio.to_thread(_sync_generate, system_prompt, diff, True)
             except LLMError as exc:
                 console.print(f"[bold red]LLM error:[/] {exc}")
                 raise typer.Exit(1)
@@ -151,12 +147,8 @@ def status_cmd():
 
         table.add_row("Branch", f"[bold]{branch}[/]")
         table.add_row("Staged", f"[green]{staged}[/]" if staged else "[dim]0[/]")
-        table.add_row(
-            "Unstaged", f"[yellow]{unstaged}[/]" if unstaged else "[dim]0[/]"
-        )
-        table.add_row(
-            "Untracked", f"[red]{untracked}[/]" if untracked else "[dim]0[/]"
-        )
+        table.add_row("Unstaged", f"[yellow]{unstaged}[/]" if unstaged else "[dim]0[/]")
+        table.add_row("Untracked", f"[red]{untracked}[/]" if untracked else "[dim]0[/]")
         table.add_row("Latest tag", tag or "[dim]none[/]")
         table.add_row("Commits since tag", str(commits_since))
 
@@ -189,12 +181,12 @@ def release_cmd(
 
         log = await get_log_since(tag)
         if not log:
-            console.print(
-                f"[yellow]No commits since {tag} — nothing to release.[/]"
-            )
+            console.print(f"[yellow]No commits since {tag} — nothing to release.[/]")
             raise typer.Exit()
 
-        console.print(f"[dim]Latest tag: {tag} | {len(log.splitlines())} commits since[/]")
+        console.print(
+            f"[dim]Latest tag: {tag} | {len(log.splitlines())} commits since[/]"
+        )
 
         # 2. Ask Gemini
         system_prompt = get_release_system_prompt()
@@ -220,9 +212,7 @@ def release_cmd(
             raise typer.Exit(1)
 
         # 4. Preview
-        console.print(
-            Panel(notes, title=f"🚀 Release {new_tag}", border_style="green")
-        )
+        console.print(Panel(notes, title=f"🚀 Release {new_tag}", border_style="green"))
 
         if dry_run:
             console.print("[yellow]--dry-run: skipping release.[/]")
