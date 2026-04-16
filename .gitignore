@@ -16,3 +16,5 @@ temp/
 
 # lock files
 **/**.lock
+
+translations
