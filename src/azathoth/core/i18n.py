@@ -1,8 +1,7 @@
 import json
 import re
-import asyncio
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set
 
 from pydantic import BaseModel, Field
 
@@ -112,7 +111,7 @@ def load_all_translations(paths: Dict[str, Path]) -> Dict[str, TranslationSet]:
                     translations[locale] = TranslationSet(
                         locale=locale, messages=messages
                     )
-            except json.JSONDecodeError, IOError:
+            except (json.JSONDecodeError, OSError):
                 translations[locale] = TranslationSet(locale=locale, messages={})
         else:
             translations[locale] = TranslationSet(locale=locale, messages={})
@@ -185,7 +184,6 @@ Do not include any other text or explanation."""
     canary_hello = ("__canary_hello", "Hello")
     canary_goodbye = ("__canary_goodbye", "Goodbye")
 
-    full_keys = [canary_hello[0]] + keys + [canary_goodbye[0]]
     full_values = [canary_hello[1]] + values + [canary_goodbye[1]]
 
     user_message = json.dumps(full_values, ensure_ascii=False)
@@ -304,7 +302,7 @@ def write_translations(path: Path, translations: TranslationSet):
         try:
             with open(path, "r", encoding="utf-8") as f:
                 existing_data = json.load(f)
-        except json.JSONDecodeError, IOError:
+        except (json.JSONDecodeError, OSError):
             pass
 
     # Update with new messages, keeping $schema

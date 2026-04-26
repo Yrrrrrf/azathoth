@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 import os
+import warnings
 from pathlib import Path
-from pydantic import Field, SecretStr
+
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -10,6 +14,8 @@ from pydantic_settings import (
 
 _CONFIG_DIR = Path.home() / ".config" / "azathoth"
 _CONFIG_FILE = _CONFIG_DIR / "config.toml"
+
+_PREVIEW_TAGS = ("preview", "experimental", "exp")
 
 
 def _resolve_api_key() -> SecretStr:
@@ -45,6 +51,20 @@ class Settings(BaseSettings):
         env_prefix="AZATHOTH_",
         extra="ignore",
     )
+
+    @field_validator("gemini_model")
+    @classmethod
+    def warn_on_preview_model(cls, v: str) -> str:
+        """Emit a UserWarning when the configured model name looks like a preview/experimental tag."""
+        if any(tag in v.lower() for tag in _PREVIEW_TAGS):
+            warnings.warn(
+                f"Configured Gemini model '{v}' contains a preview/experimental tag. "
+                "Preview models may be deprecated or removed without notice. "
+                "Consider pinning a stable model identifier.",
+                UserWarning,
+                stacklevel=2,
+            )
+        return v
 
     @classmethod
     def settings_customise_sources(

@@ -3,7 +3,7 @@ name = "azathoth"
 version = "0.0.1"
 description = "Azathoth: Dual-Protocol AI Intelligence Layer (MCP + A2A)"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
     { name = "Fernando Bryan Reza Campos", email = "fer.rezac@outlook.com" },
@@ -11,9 +11,9 @@ authors = [
 keywords = ["ai", "mcp", "a2a", "agent", "automation"]
 dependencies = [
     "rich>=15.0.0",
-    "typer>=0.24.1",
-    "pydantic>=2.13.1",
-    "pydantic-settings>=2.13.1",
+    "typer>=0.25.0",
+    "pydantic>=2.13.3",
+    "pydantic-settings>=2.14.0",
     "tiktoken>=0.12.0",
     "httpx>=0.28.1",
     "gitingest>=0.3.1",
@@ -29,19 +29,24 @@ dev = [
     "pytest>=9.0.3",
     "pytest-asyncio>=1.3.0",
     "pytest-cov>=7.1.0",
-    "ruff>=0.15.10",
-    "pyright>=1.1.408",
+    "ruff>=0.15.12",
+    "pyright>=1.1.409",
 ]
 
 [project.scripts]
 az = "azathoth.cli.main:app"
 azathoth = "azathoth.cli.main:app"
 workflow = "azathoth.mcp.workflow:run"
+azathoth-import-check = "azathoth.dev.import_check:main"
 
 [tool.pyright]
 include = ["src/azathoth"]
 venvPath = "."
 venv = ".venv"
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --strict-config"
+asyncio_mode = "auto"
 
 [build-system]
 requires = ["hatchling"]
