@@ -51,7 +51,11 @@ def patch_providers(monkeypatch):
         )
         monkeypatch.setattr(
             "azathoth.config.config",
-            MagicMock(active_providers=["fake"], llm_chain_timeout=30.0, llm_per_provider_timeout=30.0),
+            MagicMock(
+                active_providers=["fake"],
+                llm_chain_timeout=30.0,
+                llm_per_provider_timeout=30.0,
+            ),
         )
 
     return _patch
@@ -83,7 +87,11 @@ async def test_generate_provider_unavailable_falls_through(monkeypatch):
     monkeypatch.setattr("azathoth.providers.registry.get_provider", _get)
     monkeypatch.setattr(
         "azathoth.config.config",
-        MagicMock(active_providers=["p1", "p2"], llm_chain_timeout=30.0, llm_per_provider_timeout=30.0),
+        MagicMock(
+            active_providers=["p1", "p2"],
+            llm_chain_timeout=30.0,
+            llm_per_provider_timeout=30.0,
+        ),
     )
 
     result = await generate("sys", "user")
@@ -107,7 +115,11 @@ async def test_generate_non_retryable_halts_chain(monkeypatch):
     monkeypatch.setattr("azathoth.providers.registry.get_provider", _get)
     monkeypatch.setattr(
         "azathoth.config.config",
-        MagicMock(active_providers=["p1", "p2"], llm_chain_timeout=30.0, llm_per_provider_timeout=30.0),
+        MagicMock(
+            active_providers=["p1", "p2"],
+            llm_chain_timeout=30.0,
+            llm_per_provider_timeout=30.0,
+        ),
     )
 
     with pytest.raises(ProviderError):
@@ -128,7 +140,11 @@ async def test_all_providers_fail_raises_all_failed(monkeypatch):
     monkeypatch.setattr("azathoth.providers.registry.get_provider", _get)
     monkeypatch.setattr(
         "azathoth.config.config",
-        MagicMock(active_providers=["p1", "p2"], llm_chain_timeout=30.0, llm_per_provider_timeout=30.0),
+        MagicMock(
+            active_providers=["p1", "p2"],
+            llm_chain_timeout=30.0,
+            llm_per_provider_timeout=30.0,
+        ),
     )
 
     with pytest.raises(AllProvidersFailedError) as exc_info:
@@ -148,7 +164,11 @@ async def test_generate_provider_override(monkeypatch):
     monkeypatch.setattr("azathoth.providers.registry.get_provider", lambda name: fake)
     monkeypatch.setattr(
         "azathoth.config.config",
-        MagicMock(active_providers=["gemini"], llm_chain_timeout=30.0, llm_per_provider_timeout=30.0),
+        MagicMock(
+            active_providers=["gemini"],
+            llm_chain_timeout=30.0,
+            llm_per_provider_timeout=30.0,
+        ),
     )
 
     result = await generate("sys", "user", provider="override")
@@ -192,7 +212,11 @@ async def test_generate_with_tools_native_path(monkeypatch):
     )
     monkeypatch.setattr(
         "azathoth.config.config",
-        MagicMock(active_providers=["fake"], llm_chain_timeout=30.0, llm_per_provider_timeout=30.0),
+        MagicMock(
+            active_providers=["fake"],
+            llm_chain_timeout=30.0,
+            llm_per_provider_timeout=30.0,
+        ),
     )
 
     spec = ToolSpec(name="search", description="Search", parameters_schema={})
@@ -217,7 +241,9 @@ async def test_generate_with_tools_emulator_path(monkeypatch):
             self, system_prompt, user_message, *, json_mode=False, tools=None
         ):
             _FakeNoTools.received_tools = tools
-            return LLMResponse(text=tool_response, provider_name="fake", model="fake-model")
+            return LLMResponse(
+                text=tool_response, provider_name="fake", model="fake-model"
+            )
 
     monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
     monkeypatch.setattr(
@@ -225,7 +251,11 @@ async def test_generate_with_tools_emulator_path(monkeypatch):
     )
     monkeypatch.setattr(
         "azathoth.config.config",
-        MagicMock(active_providers=["fake"], llm_chain_timeout=30.0, llm_per_provider_timeout=30.0),
+        MagicMock(
+            active_providers=["fake"],
+            llm_chain_timeout=30.0,
+            llm_per_provider_timeout=30.0,
+        ),
     )
 
     spec = ToolSpec(name="fn", description="A function", parameters_schema={})

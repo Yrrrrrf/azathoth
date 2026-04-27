@@ -174,6 +174,7 @@ class OllamaProvider:
 def _factory() -> OllamaProvider:
     """Factory callable for the registry — reads config at call time."""
     from azathoth.config import get_config
+
     _cfg = get_config()  # local import to avoid circular
 
     return OllamaProvider(

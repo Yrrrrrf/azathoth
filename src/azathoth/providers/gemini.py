@@ -165,6 +165,7 @@ class GeminiProvider:
 def _factory() -> GeminiProvider:
     """Factory callable for the registry — reads config at call time."""
     from azathoth.config import get_config
+
     _cfg = get_config()  # local import to avoid circular
 
     api_key = _cfg.gemini_api_key.get_secret_value()

@@ -54,6 +54,7 @@ __all__ = [
 def _get_provider_chain(provider_override: str | None = None):
     """Return an ordered list of provider name strings for the resolver."""
     from azathoth.config import get_config
+
     config = get_config()  # late import — avoids import-time circular
 
     if provider_override:
@@ -149,6 +150,7 @@ async def _resolve(
         parse_tool_calls_from_json,
     )
     from azathoth.config import get_config
+
     _cfg = get_config()
 
     _load_providers()
@@ -162,10 +164,13 @@ async def _resolve(
             for attempt, name in enumerate(chain):
                 try:
                     p = get_provider(name)
-                    
+
                     from rich.console import Console
+
                     model_name = getattr(p, "model", getattr(p, "_model", "unknown"))
-                    Console(stderr=True).print(f"\n🔄 Requesting [bold cyan]{name}[/] (model: [dim]{model_name}[/])")
+                    Console(stderr=True).print(
+                        f"\n\t[cyan]Requesting[/] [bold cyan]{name}[/] (model: [dim]{model_name}[/])"
+                    )
 
                     # Emulator path: inject tool catalog into system prompt for providers
                     # that don't support native tool calling.
@@ -225,5 +230,5 @@ async def _resolve(
 
     except asyncio.TimeoutError as exc:
         causes.append(exc)
-        
+
     raise AllProvidersFailedError(causes)

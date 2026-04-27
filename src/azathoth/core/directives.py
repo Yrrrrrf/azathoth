@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from pydantic import BaseModel
 from azathoth.config import get_config
+
 config = get_config()
 
 

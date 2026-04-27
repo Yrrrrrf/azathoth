@@ -91,7 +91,7 @@ class Settings(BaseSettings):
 
     #: Wall-clock budget per single provider in the chain.
     llm_per_provider_timeout: float = Field(default=30.0)
-    
+
     #: Deprecated alias for llm_chain_timeout
     llm_total_timeout: float | None = Field(default=None)
 

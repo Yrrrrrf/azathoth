@@ -107,7 +107,11 @@ async def test_first_provider_success_short_circuits(monkeypatch):
     monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
     monkeypatch.setattr(
         "azathoth.config.config",
-        MagicMock(active_providers=["p1", "p2"], llm_chain_timeout=30.0, llm_per_provider_timeout=30.0),
+        MagicMock(
+            active_providers=["p1", "p2"],
+            llm_chain_timeout=30.0,
+            llm_per_provider_timeout=30.0,
+        ),
     )
 
     from azathoth.core.llm import generate
@@ -131,7 +135,11 @@ async def test_unavailable_triggers_fallback(monkeypatch):
     monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
     monkeypatch.setattr(
         "azathoth.config.config",
-        MagicMock(active_providers=["p1", "p2"], llm_chain_timeout=30.0, llm_per_provider_timeout=30.0),
+        MagicMock(
+            active_providers=["p1", "p2"],
+            llm_chain_timeout=30.0,
+            llm_per_provider_timeout=30.0,
+        ),
     )
 
     from azathoth.core.llm import generate
@@ -171,7 +179,11 @@ async def test_non_retryable_error_halts_chain(monkeypatch):
     monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
     monkeypatch.setattr(
         "azathoth.config.config",
-        MagicMock(active_providers=["p1", "p2"], llm_chain_timeout=30.0, llm_per_provider_timeout=30.0),
+        MagicMock(
+            active_providers=["p1", "p2"],
+            llm_chain_timeout=30.0,
+            llm_per_provider_timeout=30.0,
+        ),
     )
 
     from azathoth.core.llm import generate
@@ -210,7 +222,11 @@ async def test_all_providers_fail_raises_all_failed_error(monkeypatch):
     monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
     monkeypatch.setattr(
         "azathoth.config.config",
-        MagicMock(active_providers=["p1", "p2"], llm_chain_timeout=30.0, llm_per_provider_timeout=30.0),
+        MagicMock(
+            active_providers=["p1", "p2"],
+            llm_chain_timeout=30.0,
+            llm_per_provider_timeout=30.0,
+        ),
     )
 
     from azathoth.core.llm import generate
@@ -255,7 +271,8 @@ async def test_timeout_falls_through_to_next_provider(monkeypatch):
         "azathoth.config.config",
         MagicMock(
             active_providers=["p1", "p2"],
-            llm_chain_timeout=30.0, llm_per_provider_timeout=0.05,  # 50 ms — p1's 999 s sleep will be cut
+            llm_chain_timeout=30.0,
+            llm_per_provider_timeout=0.05,  # 50 ms — p1's 999 s sleep will be cut
         ),
     )
 
@@ -353,7 +370,11 @@ async def test_fallback_log_does_not_leak_api_key(monkeypatch, caplog):
     monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
     monkeypatch.setattr(
         "azathoth.config.config",
-        MagicMock(active_providers=["p1", "p2"], llm_chain_timeout=30.0, llm_per_provider_timeout=30.0),
+        MagicMock(
+            active_providers=["p1", "p2"],
+            llm_chain_timeout=30.0,
+            llm_per_provider_timeout=30.0,
+        ),
     )
 
     from azathoth.core.llm import generate
