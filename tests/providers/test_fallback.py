@@ -89,7 +89,6 @@ async def test_first_provider_success_short_circuits(monkeypatch):
     _register_pair("p1", p1_cls, "p2", p2_cls)
 
     call_log: list[str] = []
-    original_p1 = p1_cls
 
     class TrackP1(p1_cls):  # type: ignore[valid-type]
         async def generate(self, *args, **kw):

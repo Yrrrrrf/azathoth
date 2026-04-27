@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import MagicMock
 
 from azathoth.core.llm import LLMError, generate, generate_with_tools
 from azathoth.providers.base import (
@@ -22,7 +22,6 @@ def _make_fake_provider(
     name: str = "fake", text: str = "hello", raises=None, tools_support: bool = True
 ):
     """Build a minimal Provider-conforming object."""
-    from azathoth.providers.base import ToolSpec
 
     class _Fake:
         def __init__(self):
@@ -192,7 +191,6 @@ async def test_generate_with_tools_native_path(monkeypatch):
     from azathoth.providers.base import ToolCall
 
     tc = ToolCall(name="search", arguments={"q": "test"})
-    fake = _make_fake_provider("fake", tools_support=True)
     fake_response = LLMResponse(
         text="", tool_calls=[tc], provider_name="fake", model="fake-model"
     )

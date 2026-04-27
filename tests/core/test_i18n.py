@@ -1,7 +1,6 @@
 import pytest
 import json
 from pathlib import Path
-from unittest.mock import patch, AsyncMock
 from azathoth.core.i18n import (
     InlangConfig,
     resolve_paths,
@@ -17,7 +16,7 @@ from azathoth.core.i18n import (
     export_registry,
     import_registry,
 )
-from azathoth.core.exceptions import ConfigParseError, TranslationError
+from azathoth.core.exceptions import TranslationError
 
 
 @pytest.fixture

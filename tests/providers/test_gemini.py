@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from azathoth.providers.base import (
     LLMResponse,
@@ -55,7 +55,7 @@ async def test_generate_json_mode(provider, mock_genai_client):
     mock_genai_client.models.generate_content.return_value.usage_metadata = MagicMock(
         prompt_token_count=None, candidates_token_count=None
     )
-    result = await provider.generate("sys", "user", json_mode=True)
+    await provider.generate("sys", "user", json_mode=True)
     call_kwargs = mock_genai_client.models.generate_content.call_args
     cfg = call_kwargs.kwargs.get("config") or call_kwargs[1].get("config")
     assert cfg.response_mime_type == "application/json"

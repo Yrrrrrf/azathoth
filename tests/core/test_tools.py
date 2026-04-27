@@ -188,9 +188,8 @@ def test_dispatch_wrong_args_raises_type_error():
 @pytest.mark.asyncio
 async def test_emulator_roundtrip_via_fake_provider():
     """Full round-trip: tool spec → emulator prompt → fake JSON output → ToolCall."""
-    from azathoth.providers.base import LLMResponse, Provider
+    from azathoth.providers.base import LLMResponse
 
-    spec = ToolSpec(name="search", description="Search", parameters_schema={})
     tool_json_response = json.dumps(
         {"tool_calls": [{"name": "search", "arguments": {"q": "hello"}}]}
     )

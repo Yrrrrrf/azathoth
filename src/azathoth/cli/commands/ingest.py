@@ -19,10 +19,8 @@ from rich.progress import (
     Task,
 )
 from rich.text import Text
-
+from azathoth.core.utils import format_size
 from azathoth.config import get_config
-
-config = get_config()
 from azathoth.core.ingest import (
     ingest,
     IngestionResult,
@@ -31,7 +29,8 @@ from azathoth.core.ingest import (
     fetch_user_repos,
     get_subpath_context,
 )
-from azathoth.core.utils import format_size
+
+config = get_config()
 
 # --- AGGRESSIVE LOG SILENCING ---
 try:
