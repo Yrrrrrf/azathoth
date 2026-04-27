@@ -181,8 +181,8 @@ async def _ingest_directory(
     # 1. Perform ingestion
     summary, tree, content = await ingest_async(
         ingest_target,
-        include_patterns=list(include_patterns) if include_patterns else None,
-        exclude_patterns=list(exclude_patterns) if exclude_patterns else None,
+        include_patterns=include_patterns,
+        exclude_patterns=exclude_patterns,
         include_gitignored=ignore_gitignore,
     )
 

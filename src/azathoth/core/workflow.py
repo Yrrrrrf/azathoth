@@ -22,6 +22,7 @@ async def _run_git(args: list[str], cwd: Optional[str] = None) -> Tuple[int, str
         cwd=cwd,
     )
     stdout, stderr = await process.communicate()
+    assert process.returncode is not None
     return process.returncode, stdout.decode().strip(), stderr.decode().strip()
 
 

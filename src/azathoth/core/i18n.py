@@ -162,7 +162,7 @@ def build_prompt(
     locale: str,
     keys: list[str],
     values: list[str],
-    sample_pairs: list[tuple[str, str]] = None,
+    sample_pairs: list[tuple[str, str]] | None = None,
 ) -> tuple[str, str]:
     """Construct system and user prompt for translation."""
 
@@ -260,7 +260,7 @@ async def translate_locale(
     locale: str,
     keys: list[str],
     values: list[str],
-    sample_pairs: list[tuple[str, str]] = None,
+    sample_pairs: list[tuple[str, str]] | None = None,
 ) -> list[str]:
     """Full pipeline for a single locale."""
     if not keys:

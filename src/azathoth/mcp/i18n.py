@@ -69,7 +69,7 @@ async def translate_project(settings_path: str, full: bool = False) -> str:
     results_summary = []
 
     for locale in target_locales:
-        target_set = translations.get(locale)
+        target_set = translations[locale]
         diff = diff_against_base(base_set, target_set)
 
         keys_to_translate = diff.missing_keys

@@ -304,6 +304,30 @@ def _check_r3_provider_conformance() -> list[Violation]:
     return violations
 
 
+def _check_r4_no_bare_config_import(files: list[Path]) -> list[Violation]:
+    """R4: No bare config import (from azathoth.config import config)."""
+    violations: list[Violation] = []
+    for path in files:
+        rel = _rel(path)
+        try:
+            tree = ast.parse(path.read_text("utf-8"))
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module == "azathoth.config":
+                for alias in node.names:
+                    if alias.name == "config":
+                        violations.append(
+                            Violation(
+                                "R4:no-bare-config",
+                                rel,
+                                node.lineno,
+                                "Direct import of 'config' from azathoth.config is forbidden. Use get_config() instead.",
+                            )
+                        )
+    return violations
+
+
 # ── Main runner ───────────────────────────────────────────────────────────────
 
 
@@ -316,10 +340,11 @@ def run_check() -> ArchCheckResult:
     all_violations.extend(_check_r1_sdk_isolation(files))
     all_violations.extend(_check_r2_facade_boundary(files))
     all_violations.extend(_check_r3_provider_conformance())
+    all_violations.extend(_check_r4_no_bare_config_import(files))
 
     return ArchCheckResult(
         violations=all_violations,
-        rules_checked=3,
+        rules_checked=4,
         elapsed=time.perf_counter() - t0,
         module_count=len(files),
     )

@@ -53,7 +53,8 @@ __all__ = [
 
 def _get_provider_chain(provider_override: str | None = None):
     """Return an ordered list of provider name strings for the resolver."""
-    from azathoth.config import config  # late import — avoids import-time circular
+    from azathoth.config import get_config
+    config = get_config()  # late import — avoids import-time circular
 
     if provider_override:
         return [provider_override]
@@ -147,7 +148,8 @@ async def _resolve(
         build_emulator_system_prompt,
         parse_tool_calls_from_json,
     )
-    from azathoth.config import config as _cfg
+    from azathoth.config import get_config
+    _cfg = get_config()
 
     _load_providers()
 
@@ -166,7 +168,9 @@ async def _resolve(
             emulator_mode = bool(tools) and not p.supports_native_tools
 
             if emulator_mode:
-                effective_system = build_emulator_system_prompt(system_prompt, tools)  # type: ignore[arg-type]
+                effective_system = build_emulator_system_prompt(
+                    system_prompt, tools or []
+                )
                 effective_tools = None  # don't pass tools natively
 
             response = await asyncio.wait_for(

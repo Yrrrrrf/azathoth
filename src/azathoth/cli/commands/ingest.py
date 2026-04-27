@@ -20,7 +20,8 @@ from rich.progress import (
 )
 from rich.text import Text
 
-from azathoth.config import config
+from azathoth.config import get_config
+config = get_config()
 from azathoth.core.ingest import (
     ingest,
     IngestionResult,

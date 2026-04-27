@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 from pydantic import BaseModel
 
@@ -206,7 +206,7 @@ def parse_tool_calls_from_json(text: str) -> list[ToolCall]:
 # ── Tool dispatch ─────────────────────────────────────────────────────────────
 
 
-def dispatch(call: ToolCall, registry: dict[str, Callable[..., Any]]) -> Any:
+def dispatch(call: ToolCall, registry: Mapping[str, Callable[..., Any]]) -> Any:
     """Execute *call* against *registry* and return the result.
 
     Args:

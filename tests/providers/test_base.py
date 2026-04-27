@@ -43,7 +43,7 @@ def test_tool_spec_with_schema():
 def test_tool_spec_frozen():
     spec = ToolSpec(name="t", description="d")
     with pytest.raises(Exception):  # frozen model
-        spec.name = "other"  # type: ignore[misc]
+        spec.name = "other"  # ty: ignore[invalid-assignment]
 
 
 def test_tool_spec_missing_required_fields():
@@ -69,7 +69,7 @@ def test_tool_call_with_id():
 def test_tool_call_frozen():
     tc = ToolCall(name="fn", arguments={})
     with pytest.raises(Exception):
-        tc.name = "other"  # type: ignore[misc]
+        tc.name = "other"  # ty: ignore[invalid-assignment]
 
 
 # ── LLMResponse ───────────────────────────────────────────────────────────────

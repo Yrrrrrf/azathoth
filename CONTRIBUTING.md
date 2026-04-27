@@ -15,7 +15,7 @@ uv sync --extra dev
 uv run azathoth-import-check && \
 uv run azathoth-architecture-check && \
 uv run ruff check src/ && \
-uv run pyright src/azathoth/ && \
+uv run ty check src/ && \
 uv run pytest tests/ -q --strict-markers --strict-config
 ```
 
@@ -115,7 +115,7 @@ that should be routine after Phase 7.  The template is `providers/ollama.py`:
 |------|-----------|
 | `from __future__ import annotations` at the top of every `.py` | Consistent forward-ref behaviour across Python 3.11–3.13 |
 | Full type hints on every public function | `pyright` checks these in CI |
-| `pyright --strict` for `providers/` and `core/llm.py`, `core/tools.py` | Providers and the LLM façade are the highest-risk surface |
+| `ty check src/` in strict mode | Providers and the LLM façade are the highest-risk surface |
 | `ruff` rulesets `E, F, I, B, RUF, UP, PLR, SIM, ASYNC, FBT, RET` | Errors, not warnings |
 | No `print()` in `src/` | Use `logging.getLogger(__name__)` |
 | No bare `except:` or `except Exception:` without re-raise or structured log | Silent failures are defects |

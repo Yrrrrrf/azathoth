@@ -10,7 +10,7 @@ Tool call translation (Phase 5) is implemented here for native support.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, NoReturn
 
 from google import genai
 from google.genai import types
@@ -32,7 +32,7 @@ _AUTH_HINTS = ("api key", "permission denied", "unauthenticated", "forbidden")
 _SCHEMA_HINTS = ("invalid argument", "bad request", "schema", "malformed")
 
 
-def _classify_error(exc: Exception) -> None:
+def _classify_error(exc: Exception) -> NoReturn:
     """Raise the appropriate typed ProviderError subclass for a google-genai SDK exception."""
     msg = str(exc).lower()
     exc_name = type(exc).__name__.lower()
@@ -54,7 +54,7 @@ def _tool_spec_to_gemini(spec: ToolSpec) -> types.FunctionDeclaration:
     return types.FunctionDeclaration(
         name=spec.name,
         description=spec.description,
-        parameters=spec.parameters_schema or None,
+        parameters=spec.parameters_schema or None,  # ty: ignore[invalid-argument-type]
     )
 
 
@@ -62,7 +62,12 @@ def _parse_tool_calls(response: Any) -> list[ToolCall]:
     """Extract ``ToolCall`` instances from a Gemini response object."""
     tool_calls: list[ToolCall] = []
     try:
-        for part in (response.candidates or [{}])[0].content.parts or []:
+        if not response.candidates:
+            return tool_calls
+        content = response.candidates[0].content
+        if not content or not content.parts:
+            return tool_calls
+        for part in content.parts:
             if hasattr(part, "function_call") and part.function_call:
                 fc = part.function_call
                 tool_calls.append(
@@ -159,7 +164,8 @@ class GeminiProvider:
 
 def _factory() -> GeminiProvider:
     """Factory callable for the registry — reads config at call time."""
-    from azathoth.config import config as _cfg  # local import to avoid circular
+    from azathoth.config import get_config
+    _cfg = get_config()  # local import to avoid circular
 
     api_key = _cfg.gemini_api_key.get_secret_value()
     if not api_key:

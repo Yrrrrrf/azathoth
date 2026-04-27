@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
+from collections.abc import Sequence
+
 from pydantic import BaseModel, Field
 
 
@@ -183,7 +185,7 @@ class AllProvidersFailedError(ProviderError):
     order they were encountered.
     """
 
-    def __init__(self, causes: list[Exception]) -> None:
-        self.causes: list[Exception] = causes
+    def __init__(self, causes: Sequence[Exception]) -> None:
+        self.causes: Sequence[Exception] = causes
         summary = "; ".join(f"{type(e).__name__}: {e}" for e in causes)
         super().__init__(f"All providers failed: {summary}")

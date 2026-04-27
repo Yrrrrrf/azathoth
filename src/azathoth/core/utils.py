@@ -1,5 +1,6 @@
 import tiktoken
-from azathoth.config import config
+from azathoth.config import get_config
+config = get_config()
 
 
 def estimate_tokens(text: str) -> int:

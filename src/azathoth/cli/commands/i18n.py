@@ -67,7 +67,7 @@ def translate(
                 console=console,
             ) as progress:
                 for locale in target_locales:
-                    target_set = translations.get(locale)
+                    target_set = translations[locale]
                     diff = diff_against_base(base_set, target_set)
 
                     keys_to_translate = diff.missing_keys

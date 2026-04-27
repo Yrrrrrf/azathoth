@@ -165,3 +165,7 @@ class Settings(BaseSettings):
 
 # Singleton
 config = Settings()
+
+
+def get_config() -> Settings:
+    return config

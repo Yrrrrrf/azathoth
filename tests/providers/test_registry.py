@@ -71,7 +71,7 @@ def test_list_providers_sorted():
 
 def test_register_non_callable_raises():
     with pytest.raises(TypeError):
-        register("bad", "not-a-callable")  # type: ignore[arg-type]
+        register("bad", "not-a-callable")  # ty: ignore[invalid-argument-type]
 
 
 def test_register_empty_name_raises():
@@ -89,7 +89,7 @@ def test_register_non_provider_raises():
         pass
 
     with pytest.raises(ProviderError, match="Protocol"):
-        register("bad", NotProvider)  # type: ignore[arg-type]
+        register("bad", NotProvider)  # ty: ignore[invalid-argument-type]
 
 
 # ── get_provider ──────────────────────────────────────────────────────────────
