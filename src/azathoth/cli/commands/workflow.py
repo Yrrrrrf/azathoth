@@ -45,6 +45,10 @@ def commit_cmd(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Generate message without committing."
     ),
+    provider: Optional[str] = typer.Option(
+        None, "--provider", "-p",
+        help="Override the LLM provider for this invocation (e.g. 'ollama', 'gemini').",
+    ),
 ):
     """Generate an AI commit message and commit staged changes."""
 
@@ -62,7 +66,7 @@ def commit_cmd(
         system_prompt = get_commit_system_prompt(focus)
         with console.status("[bold cyan]Generating commit message…[/]"):
             try:
-                raw = await asyncio.to_thread(_sync_generate, system_prompt, diff, True)
+                raw = await asyncio.to_thread(_sync_generate, system_prompt, diff, True, provider)
             except LLMError as exc:
                 console.print(f"[bold red]LLM error:[/] {exc}")
                 raise typer.Exit(1)
@@ -167,6 +171,10 @@ def release_cmd(
         False, "--dry-run", help="Generate notes without publishing."
     ),
     pre: bool = typer.Option(False, "--pre", help="Mark as prerelease."),
+    provider: Optional[str] = typer.Option(
+        None, "--provider", "-p",
+        help="Override the LLM provider for this invocation (e.g. 'ollama', 'gemini').",
+    ),
 ):
     """Generate AI release notes and publish via `gh release create`."""
 
@@ -195,7 +203,7 @@ def release_cmd(
         with console.status("[bold cyan]Generating release notes…[/]"):
             try:
                 raw = await asyncio.to_thread(
-                    _sync_generate, system_prompt, user_msg, True
+                    _sync_generate, system_prompt, user_msg, True, provider
                 )
             except LLMError as exc:
                 console.print(f"[bold red]LLM error:[/] {exc}")
@@ -237,8 +245,8 @@ def release_cmd(
 # ── helpers ──────────────────────────────────────────────────────────────
 
 
-def _sync_generate(system_prompt: str, user_message: str, json_mode: bool) -> str:
+def _sync_generate(system_prompt: str, user_message: str, json_mode: bool, provider: Optional[str] = None) -> str:
     """Synchronous wrapper for the async generate() — used inside to_thread."""
     import asyncio as _aio
 
-    return _aio.run(generate(system_prompt, user_message, json_mode=json_mode))
+    return _aio.run(generate(system_prompt, user_message, json_mode=json_mode, provider=provider))

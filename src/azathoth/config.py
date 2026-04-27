@@ -1,3 +1,12 @@
+"""azathoth.config — application settings (pydantic-settings).
+
+Nested structure (Phase 3+):
+  - ``Settings.gemini_*``  flat fields kept for backward compat (emit DeprecationWarning)
+  - ``Settings.llm_provider``   single-provider override
+  - ``Settings.llm_providers``  ordered fallback chain (Phase 6)
+  - ``Settings.ollama_*``       Ollama daemon config (Phase 4)
+"""
+
 from __future__ import annotations
 
 import os
@@ -20,31 +29,40 @@ _PREVIEW_TAGS = ("preview", "experimental", "exp")
 
 def _resolve_api_key() -> SecretStr:
     """Check AZATHOTH_GEMINI_API_KEY first, then fall back to GEMINI_API_KEY."""
-    key = os.environ.get("AZATHOTH_GEMINI_API_KEY") or os.environ.get(
-        "GEMINI_API_KEY", ""
-    )
+    key = os.environ.get("AZATHOTH_GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
     return SecretStr(key)
 
 
 class Settings(BaseSettings):
-    # ── LLM ──────────────────────────────────────────────
+    # ── LLM provider selection ────────────────────────────────────────────
+    #: Single-provider override for CLI/test use; takes precedence over
+    #: ``llm_providers`` when set.
+    llm_provider: str | None = Field(default=None)
+
+    #: Ordered fallback chain (Phase 6).  The resolver tries each in order,
+    #: falling through on ``ProviderUnavailable``.
+    llm_providers: list[str] = Field(default_factory=lambda: ["gemini", "ollama"])
+
+    # ── Gemini ────────────────────────────────────────────────────────────
     gemini_api_key: SecretStr = Field(default_factory=_resolve_api_key)
     gemini_model: str = "gemini-3.1-flash-lite-preview"
 
-    # MCP Server
-    mcp_port: int = Field(default=8001)
+    # ── Ollama (Phase 4) ──────────────────────────────────────────────────
+    ollama_host: str = Field(default="http://localhost:11434")
+    ollama_model: str = Field(default="gemma4:e4b")
+    ollama_num_ctx: int = Field(default=32768)
+    ollama_request_timeout: float = Field(default=120.0)
 
-    # A2A Agent
+    # ── MCP / A2A ─────────────────────────────────────────────────────────
+    mcp_port: int = Field(default=8001)
     agent_port: int = Field(default=8002)
 
-    # Paths
+    # ── Paths ─────────────────────────────────────────────────────────────
     config_dir: Path = Field(default=_CONFIG_DIR)
 
-    # Defaults
+    # ── Misc ──────────────────────────────────────────────────────────────
     default_ingest_format: str = "txt"
     token_model: str = "cl100k_base"
-
-    # ERGONOMICS: Directly to Downloads, no subfolder
     default_output_dir: Path = Field(default=Path.home() / "Downloads")
 
     model_config = SettingsConfigDict(
@@ -55,7 +73,7 @@ class Settings(BaseSettings):
     @field_validator("gemini_model")
     @classmethod
     def warn_on_preview_model(cls, v: str) -> str:
-        """Emit a UserWarning when the configured model name looks like a preview/experimental tag."""
+        """Emit a UserWarning when the configured model name looks like a preview tag."""
         if any(tag in v.lower() for tag in _PREVIEW_TAGS):
             warnings.warn(
                 f"Configured Gemini model '{v}' contains a preview/experimental tag. "
@@ -82,6 +100,13 @@ class Settings(BaseSettings):
         )
 
     @property
+    def active_providers(self) -> list[str]:
+        """Return the effective ordered provider list for the resolver."""
+        if self.llm_provider is not None:
+            return [self.llm_provider]
+        return self.llm_providers
+
+    @property
     def directives_dir(self) -> Path:
         path = self.config_dir / "directives"
         path.mkdir(parents=True, exist_ok=True)
@@ -89,7 +114,6 @@ class Settings(BaseSettings):
 
     @property
     def reports_dir(self) -> Path:
-        # Just use Downloads
         return self.default_output_dir
 
 

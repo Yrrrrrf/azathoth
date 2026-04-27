@@ -1,82 +1,215 @@
-"""
-Tests for core/llm.py — mock-based, no network calls.
-"""
+"""tests/core/test_llm.py — LLM façade unit tests (Phase 3 rewrite)."""
+
+from __future__ import annotations
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock
 
-from azathoth.core.llm import generate, LLMError
+from azathoth.core.llm import LLMError, generate, generate_with_tools
+from azathoth.providers.base import (
+    AllProvidersFailedError,
+    LLMResponse,
+    ProviderError,
+    ProviderUnavailable,
+    ToolSpec,
+)
+
+
+# ── Helpers / fixtures ────────────────────────────────────────────────────────
+
+
+def _make_fake_provider(name: str = "fake", text: str = "hello", raises=None, tools_support: bool = True):
+    """Build a minimal Provider-conforming object."""
+    from azathoth.providers.base import ToolSpec
+
+    class _Fake:
+        def __init__(self):
+            self.name = name
+            self.supports_native_tools = tools_support
+
+        async def generate(self, system_prompt, user_message, *, json_mode=False, tools=None):
+            if raises:
+                raise raises
+            return LLMResponse(text=text, provider=name, model="fake-model")
+
+    return _Fake()
 
 
 @pytest.fixture
-def mock_config():
-    """Provide a fake config with a valid API key."""
-    with patch("azathoth.core.llm.config") as cfg:
-        cfg.gemini_api_key.get_secret_value.return_value = "fake-key"
-        cfg.gemini_model = "gemini-3.1-flash-lite-preview"
-        yield cfg
+def patch_providers(monkeypatch):
+    """Utility: patch the _load_providers side-effect and registry.get_provider."""
+    def _patch(provider):
+        monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
+        monkeypatch.setattr(
+            "azathoth.providers.registry.get_provider",
+            lambda name: provider,
+        )
+        monkeypatch.setattr(
+            "azathoth.config.config",
+            MagicMock(active_providers=["fake"]),
+        )
+    return _patch
 
 
-@pytest.fixture
-def mock_client(mock_config):
-    """Patch genai.Client and return the mock instance."""
-    with patch("azathoth.core.llm.genai.Client") as ClientCls:
-        client = MagicMock()
-        ClientCls.return_value = client
-        yield client
-
-
-@pytest.mark.asyncio
-async def test_generate_returns_text(mock_client):
-    """generate() should return the model's text response."""
-    mock_client.models.generate_content.return_value.text = "hello world"
-    result = await generate("system", "user")
-    assert result == "hello world"
+# ── generate() — basic ────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_generate_json_mode_sets_mime_type(mock_client):
-    """When json_mode=True, response_mime_type should be set."""
-    mock_client.models.generate_content.return_value.text = '{"ok": true}'
-    await generate("system", "user", json_mode=True)
-
-    call_kwargs = mock_client.models.generate_content.call_args
-    config = call_kwargs.kwargs.get("config") or call_kwargs[1].get("config")
-    assert config.response_mime_type == "application/json"
+async def test_generate_returns_text(patch_providers):
+    patch_providers(_make_fake_provider(text="world"))
+    result = await generate("sys", "user")
+    assert result == "world"
 
 
 @pytest.mark.asyncio
-async def test_generate_passes_system_instruction(mock_client):
-    """System prompt should be forwarded as system_instruction."""
-    mock_client.models.generate_content.return_value.text = "ok"
-    await generate("Be helpful", "What is 2+2?")
+async def test_generate_provider_unavailable_falls_through(monkeypatch):
+    """First provider raises ProviderUnavailable → second succeeds."""
+    p1 = _make_fake_provider("p1", raises=ProviderUnavailable("down"))
+    p2 = _make_fake_provider("p2", text="from p2")
 
-    call_kwargs = mock_client.models.generate_content.call_args
-    config = call_kwargs.kwargs.get("config") or call_kwargs[1].get("config")
-    assert config.system_instruction == "Be helpful"
+    call_count = {"n": 0}
 
+    def _get(name):
+        call_count["n"] += 1
+        return p1 if name == "p1" else p2
 
-@pytest.mark.asyncio
-async def test_generate_empty_response_raises(mock_client):
-    """An empty response.text should raise LLMError."""
-    mock_client.models.generate_content.return_value.text = ""
-    with pytest.raises(LLMError, match="empty response"):
-        await generate("system", "user")
+    monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
+    monkeypatch.setattr("azathoth.providers.registry.get_provider", _get)
+    monkeypatch.setattr(
+        "azathoth.config.config",
+        MagicMock(active_providers=["p1", "p2"]),
+    )
 
-
-@pytest.mark.asyncio
-async def test_generate_missing_key_raises():
-    """Missing API key should raise LLMError early."""
-    with patch("azathoth.core.llm.config") as cfg:
-        cfg.gemini_api_key.get_secret_value.return_value = ""
-        cfg.gemini_model = "gemini-3.1-flash-lite-preview"
-        with pytest.raises(LLMError, match="API key not set"):
-            await generate("system", "user")
+    result = await generate("sys", "user")
+    assert result == "from p2"
+    assert call_count["n"] == 2
 
 
 @pytest.mark.asyncio
-async def test_generate_sdk_exception_wraps(mock_client):
-    """SDK exceptions should be wrapped in LLMError."""
-    mock_client.models.generate_content.side_effect = RuntimeError("boom")
-    with pytest.raises(LLMError, match="Gemini API call failed"):
-        await generate("system", "user")
+async def test_generate_non_retryable_halts_chain(monkeypatch):
+    """ProviderError (non-retryable) stops chain immediately."""
+    p1 = _make_fake_provider("p1", raises=ProviderError("auth failed"))
+    p2 = _make_fake_provider("p2", text="should not reach")
+
+    call_order = []
+
+    def _get(name):
+        call_order.append(name)
+        return p1 if name == "p1" else p2
+
+    monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
+    monkeypatch.setattr("azathoth.providers.registry.get_provider", _get)
+    monkeypatch.setattr(
+        "azathoth.config.config",
+        MagicMock(active_providers=["p1", "p2"]),
+    )
+
+    with pytest.raises(ProviderError):
+        await generate("sys", "user")
+
+    assert "p2" not in call_order  # chain halted after p1
+
+
+@pytest.mark.asyncio
+async def test_all_providers_fail_raises_all_failed(monkeypatch):
+    p1 = _make_fake_provider("p1", raises=ProviderUnavailable("p1 down"))
+    p2 = _make_fake_provider("p2", raises=ProviderUnavailable("p2 down"))
+
+    def _get(name):
+        return p1 if name == "p1" else p2
+
+    monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
+    monkeypatch.setattr("azathoth.providers.registry.get_provider", _get)
+    monkeypatch.setattr(
+        "azathoth.config.config",
+        MagicMock(active_providers=["p1", "p2"]),
+    )
+
+    with pytest.raises(AllProvidersFailedError) as exc_info:
+        await generate("sys", "user")
+
+    assert len(exc_info.value.causes) == 2
+
+
+# ── generate() — provider override ────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_generate_provider_override(monkeypatch):
+    """provider= kwarg overrides config chain."""
+    fake = _make_fake_provider("override", text="override result")
+    monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
+    monkeypatch.setattr("azathoth.providers.registry.get_provider", lambda name: fake)
+    monkeypatch.setattr("azathoth.config.config", MagicMock(active_providers=["gemini"]))
+
+    result = await generate("sys", "user", provider="override")
+    assert result == "override result"
+
+
+# ── LLMError backward compat ──────────────────────────────────────────────────
+
+
+def test_llm_error_is_alias_for_provider_error():
+    """LLMError must remain importable and be ProviderError (legacy compat)."""
+    assert LLMError is ProviderError
+
+
+# ── generate_with_tools ───────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_generate_with_tools_native_path(monkeypatch):
+    """Native tool support: tools passed directly to provider."""
+    from azathoth.providers.base import ToolCall
+
+    tc = ToolCall(name="search", arguments={"q": "test"})
+    fake = _make_fake_provider("fake", tools_support=True)
+    fake_response = LLMResponse(
+        text="", tool_calls=[tc], provider="fake", model="fake-model"
+    )
+
+    class _FakeWithTools:
+        name = "fake"
+        supports_native_tools = True
+
+        async def generate(self, system_prompt, user_message, *, json_mode=False, tools=None):
+            return fake_response
+
+    monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
+    monkeypatch.setattr("azathoth.providers.registry.get_provider", lambda name: _FakeWithTools())
+    monkeypatch.setattr("azathoth.config.config", MagicMock(active_providers=["fake"]))
+
+    spec = ToolSpec(name="search", description="Search", parameters_schema={})
+    result = await generate_with_tools("sys", "user", [spec])
+    assert isinstance(result, LLMResponse)
+    assert result.tool_calls[0].name == "search"
+
+
+@pytest.mark.asyncio
+async def test_generate_with_tools_emulator_path(monkeypatch):
+    """Emulator path: provider without native tools receives enriched system prompt."""
+    import json as _json
+    tool_response = _json.dumps({"tool_calls": [{"name": "fn", "arguments": {"x": 1}}]})
+
+    class _FakeNoTools:
+        name = "fake"
+        supports_native_tools = False
+        received_tools = None
+
+        async def generate(self, system_prompt, user_message, *, json_mode=False, tools=None):
+            _FakeNoTools.received_tools = tools
+            return LLMResponse(text=tool_response, provider="fake", model="fake-model")
+
+    monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
+    monkeypatch.setattr("azathoth.providers.registry.get_provider", lambda name: _FakeNoTools())
+    monkeypatch.setattr("azathoth.config.config", MagicMock(active_providers=["fake"]))
+
+    spec = ToolSpec(name="fn", description="A function", parameters_schema={})
+    result = await generate_with_tools("sys", "user", [spec])
+
+    # Tools not passed natively (emulator handles it via system prompt)
+    assert _FakeNoTools.received_tools is None
+    # Tool calls parsed from JSON response text
+    assert len(result.tool_calls) == 1
+    assert result.tool_calls[0].name == "fn"
+    assert result.tool_calls[0].arguments == {"x": 1}
