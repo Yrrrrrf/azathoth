@@ -22,6 +22,14 @@ dependencies = [
     "python-dotenv>=1.2.2",
 ]
 
+[dependency-groups]
+dev = ["pytest>=9.0.3"]
+
+[project.urls]
+Homepage = "https://github.com/Yrrrrrf/azathoth"
+Repository = "https://github.com/Yrrrrrf/azathoth"
+# Documentation = "https://github.com/Yrrrrrf/azathoth#readme"
+
 [project.optional-dependencies]
 agent = ["a2a-sdk[http-server]>=0.3.24"]
 clipboard = ["pyperclip>=1.11.0"]
