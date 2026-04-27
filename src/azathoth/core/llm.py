@@ -162,6 +162,10 @@ async def _resolve(
             for attempt, name in enumerate(chain):
                 try:
                     p = get_provider(name)
+                    
+                    from rich.console import Console
+                    model_name = getattr(p, "model", getattr(p, "_model", "unknown"))
+                    Console(stderr=True).print(f"\n🔄 Requesting [bold cyan]{name}[/] (model: [dim]{model_name}[/])")
 
                     # Emulator path: inject tool catalog into system prompt for providers
                     # that don't support native tool calling.
