@@ -64,7 +64,7 @@ async def translate_project(settings_path: str, full: bool = False) -> str:
 
     base_locale = config.base_locale
     base_set = translations[base_locale]
-    target_locales = [l for l in config.locales if l != base_locale]
+    target_locales = [loc for loc in config.locales if loc != base_locale]
 
     results_summary = []
 

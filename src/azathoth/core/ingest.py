@@ -114,7 +114,7 @@ async def _ingest_file(path: Path) -> IngestionResult:
         # Strip extension for suggested name if it's a long path
         flat_name = flat_rel.rsplit(".", 1)[0] if "." in flat_rel else flat_rel
         suggested_name = f"{git_root.name}--{flat_name}"
-    except subprocess.CalledProcessError, FileNotFoundError, ValueError:
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
         pass
 
     formatted_content = f"FILE: {display_path}\n{'=' * 60}\n{content}"
@@ -175,7 +175,7 @@ async def _ingest_directory(
                     for pat in exclude_patterns:
                         new_exc.add(str(rel_path / pat.lstrip("/")))
                     exclude_patterns = new_exc
-        except subprocess.CalledProcessError, FileNotFoundError, ValueError:
+        except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
             pass
 
     # 1. Perform ingestion
@@ -232,7 +232,7 @@ def _parse_summary_metrics(summary: str) -> tuple[int, int]:
         if "Files analyzed:" in line:
             try:
                 file_count = int(line.split(":")[1].strip())
-            except ValueError, IndexError:
+            except (ValueError, IndexError):
                 pass
         elif "Estimated tokens:" in line:
             try:
@@ -243,7 +243,7 @@ def _parse_summary_metrics(summary: str) -> tuple[int, int]:
                     token_count = int(float(token_str.replace("m", "")) * 1_000_000)
                 else:
                     token_count = int(token_str)
-            except ValueError, IndexError:
+            except (ValueError, IndexError):
                 pass
     return file_count, token_count
 
@@ -264,7 +264,7 @@ async def _generate_filename(target: str) -> str:
                 idx = parts.index("tree") if "tree" in parts else parts.index("blob")
                 subpath = "-".join(parts[idx + 2 :])
                 return f"{repo_name}--{subpath}"
-            except ValueError, IndexError:
+            except (ValueError, IndexError):
                 pass
         return parts[-1] if parts else "report"
 
@@ -282,7 +282,7 @@ async def _generate_filename(target: str) -> str:
                 flat_rel = str(rel_path).replace("/", "-").replace("\\", "-")
                 return f"{git_root.name}--{flat_rel}"
             return git_root.name
-        except subprocess.CalledProcessError, FileNotFoundError:
+        except (subprocess.CalledProcessError, FileNotFoundError):
             pass
 
     return target_path.name or "report"
@@ -307,6 +307,6 @@ async def get_subpath_context(target: str) -> Optional[tuple[str, str]]:
             # If it's a file, we always want the relative path from root
             rel_path = p.relative_to(git_root)
             return git_root.name, str(rel_path)
-    except subprocess.CalledProcessError, FileNotFoundError, ValueError:
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
         pass
     return None

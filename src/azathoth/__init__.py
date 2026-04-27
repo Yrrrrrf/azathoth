@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # Load .env from azathoth's own directory, not the cwd
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
-from azathoth.cli import init_cli
+from azathoth.cli import init_cli  # noqa: E402 — must run after load_dotenv()
 
 
 def main() -> None:

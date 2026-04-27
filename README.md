@@ -16,7 +16,6 @@
 
 <!-- Python based projects -->
 [![PyPI version](https://img.shields.io/pypi/v/azathoth.svg)](https://pypi.org/project/azathoth/)
-[![PyPI Downloads](https://img.shields.io/pypi/dm/azathoth.svg)](https://pypi.org/project/azathoth/)
 [![Downloads](https://pepy.tech/badge/azathoth)](https://pepy.tech/project/azathoth)
 
 

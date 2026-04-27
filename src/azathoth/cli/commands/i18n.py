@@ -1,15 +1,14 @@
 import asyncio
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
 from rich.table import Table
-from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from azathoth.core.i18n import (
     InlangConfig,
+    TranslationSet,
     resolve_paths,
     load_all_translations,
     diff_against_base,
@@ -56,7 +55,7 @@ def translate(
             raise typer.Exit(1)
 
         base_set = translations[base_locale]
-        target_locales = [l for l in config.locales if l != base_locale]
+        target_locales = [loc for loc in config.locales if loc != base_locale]
 
         async def run_translations():
             tasks = []
@@ -99,27 +98,27 @@ def translate(
                     )
 
                     async def do_translate(
-                        l=locale,
+                        locale_=locale,
                         k=keys_to_translate,
                         v=values_to_translate,
                         s=samples,
                         t_id=task_id,
                     ):
                         try:
-                            res = await translate_locale(l, k, v, s)
+                            res = await translate_locale(locale_, k, v, s)
                             progress.update(
                                 t_id,
                                 completed=True,
-                                description=f"[green]Finished {l}[/green]",
+                                description=f"[green]Finished {locale_}[/green]",
                             )
-                            return l, k, res
+                            return locale_, k, res
                         except Exception as e:
                             progress.update(
                                 t_id,
                                 completed=True,
-                                description=f"[red]Failed {l}[/red]",
+                                description=f"[red]Failed {locale_}[/red]",
                             )
-                            return l, k, e
+                            return locale_, k, e
 
                     tasks.append(do_translate())
 

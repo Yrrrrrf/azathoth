@@ -13,6 +13,7 @@ uv sync --extra dev
 
 # Run the full local validation suite before every commit
 uv run azathoth-import-check && \
+uv run azathoth-architecture-check && \
 uv run ruff check src/ && \
 uv run pyright src/azathoth/ && \
 uv run pytest tests/ -q --strict-markers --strict-config
@@ -45,17 +46,68 @@ that entire class of bug before it can hide in production.
 
 **Run it on every commit** (it takes < 1 second).
 
-### `azathoth-architecture-check` *(coming in Phase 7)*
+### `azathoth-architecture-check`
 
-Parses every `.py` file under `src/azathoth/` with `ast` and verifies the
-dependency-direction rules from the architecture spec:
+```bash
+uv run azathoth-architecture-check          # human-readable; exits 1 on any violation
+uv run azathoth-architecture-check --json   # machine-readable JSON report
+uv run python -m azathoth.dev.architecture_check
+```
 
-- `cli/*` and `mcp/*` must not import concrete provider modules
-- `core/*` (except `core/llm.py`) must not import from `providers/*`
-- `providers/<name>.py` must not import from any sibling provider
-- `providers/*` must not import from `cli/*` or `mcp/*`
+Parses every `.py` file under `src/azathoth/` with `ast` and enforces three
+architectural rules:
+
+| Rule | What it checks |
+|---|---|
+| **R1: SDK isolation** | Only `providers/gemini.py` may import from the `google.*` / `genai.*` namespace.  Any other module doing so is a violation. |
+| **R2: Façade boundary** | `core/llm.py` must contain zero SDK imports at any scope level.  Additionally, no file outside `providers/` may do a module-level direct import of a concrete provider implementation (`azathoth.providers.gemini`, `azathoth.providers.ollama`, …). |
+| **R3: Provider conformance** | Every non-framework file in `providers/` must self-register and produce an instance that satisfies `isinstance(instance, Provider)`. |
+
+**Why these rules matter:**
+
+- **R1** prevents the Google SDK from bleeding into unrelated code paths.  If `core/i18n.py` imports `genai`, rotating the API key requires understanding the i18n module.
+- **R2** is the "seam" rule: consumer code that calls `generate()` must never know *which* backend handled the request.  The façade is the only door.
+- **R3** ensures new provider additions don't silently break the plugin contract.  The registry's own `register()` enforces this at import time, but the arch check re-verifies it statically as a double safety net.
+
+**Self-test** — the check must catch deliberate violations:
+
+```bash
+# Temporarily inject a violation into cli/main.py, verify it fails, restore
+echo 'from azathoth.providers.gemini import GeminiProvider' >> src/azathoth/cli/main.py && \
+  (uv run azathoth-architecture-check; rc=$?; git checkout src/azathoth/cli/main.py; [ $rc -ne 0 ])
+```
 
 ---
+
+## Architectural rules and how they're enforced
+
+The dependency directions are strictly one-way:
+
+```
+cli/*  mcp/*
+  │       │
+  └──┬───┘
+     ↓
+  core/*          ← only imports from providers.base, providers.registry
+     │
+     ↓
+  providers/base.py   providers/registry.py
+             \              /
+              ↓            ↓
+          providers/<name>.py  ← only imports from providers.base
+```
+
+Rules enforced by `azathoth-architecture-check` (R1–R3 above) and by
+`azathoth-import-check` (full namespace traversal).
+
+Adding a new provider (`providers/foo.py`) is the only architectural change
+that should be routine after Phase 7.  The template is `providers/ollama.py`:
+
+1. Implement the `Provider` Protocol (no inheritance required).
+2. Call `_register("foo", _factory)` at module bottom.
+3. Add `import azathoth.providers.foo` inside `core/llm._load_providers()`.
+4. Add `FooSettings` fields to `config.py` (prefixed `foo_*`).
+5. Run `azathoth-architecture-check` — must pass with 0 violations.
 
 ## Code standards (non-negotiable)
 

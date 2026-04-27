@@ -38,6 +38,7 @@ az = "azathoth.cli.main:app"
 azathoth = "azathoth.cli.main:app"
 workflow = "azathoth.mcp.workflow:run"
 azathoth-import-check = "azathoth.dev.import_check:main"
+azathoth-architecture-check = "azathoth.dev.architecture_check:main"
 
 [tool.pyright]
 include = ["src/azathoth"]

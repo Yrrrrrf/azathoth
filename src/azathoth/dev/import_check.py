@@ -26,7 +26,7 @@ def _collect_modules(root_package: str) -> list[str]:
     """Return fully-qualified names of every submodule under *root_package*."""
     try:
         root = importlib.import_module(root_package)
-    except (ImportError, SyntaxError) as exc:
+    except (ImportError, SyntaxError):
         # The root itself is broken — report immediately.
         return []
 

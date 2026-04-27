@@ -5,7 +5,6 @@ Presentation layer only — every tool wraps exactly one core/ operation.
 Runs on stdio transport via `uv run workflow`.
 """
 
-import asyncio
 import json
 
 from fastmcp import FastMCP
