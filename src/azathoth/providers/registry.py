@@ -46,7 +46,9 @@ def register(name: str, factory: Callable[[], Provider]) -> None:
                          whose ``name`` attribute does not match *name*.
     """
     if not callable(factory):
-        raise TypeError(f"Provider factory for '{name}' must be callable, got {type(factory)!r}")
+        raise TypeError(
+            f"Provider factory for '{name}' must be callable, got {type(factory)!r}"
+        )
     if not name:
         raise ValueError("Provider name must be a non-empty string")
 
@@ -81,8 +83,7 @@ def get_provider(name: str) -> Provider:
     if name not in _PROVIDERS:
         available = list(_PROVIDERS.keys())
         raise KeyError(
-            f"Provider '{name}' is not registered. "
-            f"Available providers: {available}"
+            f"Provider '{name}' is not registered. Available providers: {available}"
         )
     return _PROVIDERS[name]()
 

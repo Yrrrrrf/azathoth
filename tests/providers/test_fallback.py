@@ -111,6 +111,7 @@ async def test_first_provider_success_short_circuits(monkeypatch):
     )
 
     from azathoth.core.llm import generate
+
     result = await generate("sys", "user")
 
     assert result == "from p1"
@@ -134,6 +135,7 @@ async def test_unavailable_triggers_fallback(monkeypatch):
     )
 
     from azathoth.core.llm import generate
+
     result = await generate("sys", "user")
 
     assert result == "from p2"
@@ -150,6 +152,7 @@ async def test_non_retryable_error_halts_chain(monkeypatch):
     class P1:
         name = "p1"
         supports_native_tools = True
+
         async def generate(self, *a, **k):
             call_log.append("p1")
             raise ProviderAuthError("auth failed")
@@ -157,6 +160,7 @@ async def test_non_retryable_error_halts_chain(monkeypatch):
     class P2:
         name = "p2"
         supports_native_tools = True
+
         async def generate(self, *a, **k):
             call_log.append("p2")
             return _fake_response("p2")
@@ -171,6 +175,7 @@ async def test_non_retryable_error_halts_chain(monkeypatch):
     )
 
     from azathoth.core.llm import generate
+
     with pytest.raises(ProviderAuthError):
         await generate("sys", "user")
 
@@ -188,12 +193,16 @@ async def test_all_providers_fail_raises_all_failed_error(monkeypatch):
     class P1:
         name = "p1"
         supports_native_tools = True
-        async def generate(self, *a, **k): raise ProviderUnavailable("p1 gone")
+
+        async def generate(self, *a, **k):
+            raise ProviderUnavailable("p1 gone")
 
     class P2:
         name = "p2"
         supports_native_tools = True
-        async def generate(self, *a, **k): raise ProviderUnavailable("p2 gone")
+
+        async def generate(self, *a, **k):
+            raise ProviderUnavailable("p2 gone")
 
     _PROVIDERS["p1"] = P1
     _PROVIDERS["p2"] = P2
@@ -205,6 +214,7 @@ async def test_all_providers_fail_raises_all_failed_error(monkeypatch):
     )
 
     from azathoth.core.llm import generate
+
     with pytest.raises(AllProvidersFailedError) as exc_info:
         await generate("sys", "user")
 
@@ -225,6 +235,7 @@ async def test_timeout_falls_through_to_next_provider(monkeypatch):
     class P1Slow:
         name = "p1"
         supports_native_tools = True
+
         async def generate(self, *a, **k):
             await asyncio.sleep(999)  # will be cancelled by wait_for
             return _fake_response("p1")  # pragma: no cover
@@ -232,6 +243,7 @@ async def test_timeout_falls_through_to_next_provider(monkeypatch):
     class P2Fast:
         name = "p2"
         supports_native_tools = True
+
         async def generate(self, *a, **k):
             return _fake_response("p2", text="p2 quick")
 
@@ -248,6 +260,7 @@ async def test_timeout_falls_through_to_next_provider(monkeypatch):
     )
 
     from azathoth.core.llm import generate
+
     result = await generate("sys", "user")
 
     assert result == "p2 quick"
@@ -259,6 +272,7 @@ async def test_timeout_falls_through_to_next_provider(monkeypatch):
 def test_config_default_providers():
     """EC-6.1: default llm_providers must be ['gemini', 'ollama']."""
     from azathoth.config import Settings
+
     s = Settings()
     assert s.llm_providers == ["gemini", "ollama"]
 
@@ -270,6 +284,7 @@ def test_providers_env_json_list(monkeypatch):
     """EC-6.5: JSON-list form must be parsed correctly."""
     monkeypatch.setenv("AZATHOTH_LLM_PROVIDERS", '["nonexistent","gemini"]')
     from azathoth.config import Settings
+
     s = Settings()
     assert s.llm_providers == ["nonexistent", "gemini"]
 
@@ -278,6 +293,7 @@ def test_providers_env_csv(monkeypatch):
     """EC-6.5 (bonus): comma-separated form must also work."""
     monkeypatch.setenv("AZATHOTH_LLM_PROVIDERS", "nonexistent,gemini")
     from azathoth.config import Settings
+
     s = Settings()
     assert s.llm_providers == ["nonexistent", "gemini"]
 
@@ -286,6 +302,7 @@ def test_providers_env_single(monkeypatch):
     """Single provider name (no comma, no brackets) must produce a 1-element list."""
     monkeypatch.setenv("AZATHOTH_LLM_PROVIDERS", "ollama")
     from azathoth.config import Settings
+
     s = Settings()
     assert s.llm_providers == ["ollama"]
 
@@ -319,12 +336,14 @@ async def test_fallback_log_does_not_leak_api_key(monkeypatch, caplog):
     class P1Leaky:
         name = "p1"
         supports_native_tools = True
+
         async def generate(self, *a, **k):
             raise ProviderUnavailable(f"error token={fake_key}")  # key in exc message
 
     class P2:
         name = "p2"
         supports_native_tools = True
+
         async def generate(self, *a, **k):
             return _fake_response("p2")
 
@@ -338,6 +357,7 @@ async def test_fallback_log_does_not_leak_api_key(monkeypatch, caplog):
     )
 
     from azathoth.core.llm import generate
+
     with caplog.at_level(logging.INFO, logger="azathoth.core.llm"):
         await generate("sys", "user")
 

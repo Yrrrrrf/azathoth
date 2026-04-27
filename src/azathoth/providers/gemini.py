@@ -41,7 +41,10 @@ def _classify_error(exc: Exception) -> None:
         raise ProviderAuthError(f"Gemini auth failure: {exc}") from exc
     if any(h in msg or h in exc_name for h in _SCHEMA_HINTS):
         raise ProviderSchemaError(f"Gemini schema error: {exc}") from exc
-    if any(h in msg or h in exc_name for h in ("timeout", "unavailable", "503", "502", "500", "connection")):
+    if any(
+        h in msg or h in exc_name
+        for h in ("timeout", "unavailable", "503", "502", "500", "connection")
+    ):
         raise ProviderUnavailable(f"Gemini transport failure: {exc}") from exc
     raise ProviderError(f"Gemini error: {exc}") from exc
 
@@ -134,8 +137,12 @@ class GeminiProvider:
                 tool_calls=tool_calls,
                 provider=self.name,
                 model=self._model,
-                prompt_tokens=getattr(response.usage_metadata, "prompt_token_count", None),
-                completion_tokens=getattr(response.usage_metadata, "candidates_token_count", None),
+                prompt_tokens=getattr(
+                    response.usage_metadata, "prompt_token_count", None
+                ),
+                completion_tokens=getattr(
+                    response.usage_metadata, "candidates_token_count", None
+                ),
             )
 
         except ProviderError:

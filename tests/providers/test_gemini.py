@@ -18,6 +18,7 @@ from azathoth.providers.base import (
 def provider():
     """Return a GeminiProvider with a fake key — no network calls."""
     from azathoth.providers.gemini import GeminiProvider
+
     return GeminiProvider(api_key="fake-key", model="gemini-test")
 
 
@@ -78,21 +79,27 @@ async def test_generate_passes_system_instruction(provider, mock_genai_client):
 
 @pytest.mark.asyncio
 async def test_network_error_maps_to_unavailable(provider, mock_genai_client):
-    mock_genai_client.models.generate_content.side_effect = Exception("connection refused")
+    mock_genai_client.models.generate_content.side_effect = Exception(
+        "connection refused"
+    )
     with pytest.raises(ProviderUnavailable):
         await provider.generate("sys", "user")
 
 
 @pytest.mark.asyncio
 async def test_auth_error_maps_to_auth_error(provider, mock_genai_client):
-    mock_genai_client.models.generate_content.side_effect = Exception("API key not valid")
+    mock_genai_client.models.generate_content.side_effect = Exception(
+        "API key not valid"
+    )
     with pytest.raises(ProviderAuthError):
         await provider.generate("sys", "user")
 
 
 @pytest.mark.asyncio
 async def test_generic_error_maps_to_provider_error(provider, mock_genai_client):
-    mock_genai_client.models.generate_content.side_effect = RuntimeError("something broke")
+    mock_genai_client.models.generate_content.side_effect = RuntimeError(
+        "something broke"
+    )
     with pytest.raises(ProviderError):
         await provider.generate("sys", "user")
 
@@ -102,11 +109,13 @@ async def test_generic_error_maps_to_provider_error(provider, mock_genai_client)
 
 def test_provider_name():
     from azathoth.providers.gemini import GeminiProvider
+
     assert GeminiProvider.name == "gemini"
 
 
 def test_supports_native_tools():
     from azathoth.providers.gemini import GeminiProvider
+
     assert GeminiProvider.supports_native_tools is True
 
 
@@ -114,14 +123,19 @@ def test_supports_native_tools():
 
 
 @pytest.mark.asyncio
-async def test_generate_with_tools_passes_tool_declarations(provider, mock_genai_client):
+async def test_generate_with_tools_passes_tool_declarations(
+    provider, mock_genai_client
+):
     mock_genai_client.models.generate_content.return_value.text = ""
     mock_genai_client.models.generate_content.return_value.candidates = []
     mock_genai_client.models.generate_content.return_value.usage_metadata = MagicMock(
         prompt_token_count=None, candidates_token_count=None
     )
-    spec = ToolSpec(name="search", description="Search the web",
-                    parameters_schema={"type": "object", "properties": {"q": {"type": "string"}}})
+    spec = ToolSpec(
+        name="search",
+        description="Search the web",
+        parameters_schema={"type": "object", "properties": {"q": {"type": "string"}}},
+    )
     await provider.generate("sys", "user", tools=[spec])
     call_kwargs = mock_genai_client.models.generate_content.call_args
     assert "tools" in (call_kwargs.kwargs or {})

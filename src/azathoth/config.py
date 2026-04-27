@@ -37,7 +37,9 @@ _LIST_FIELDS_ENV_KEYS = {"AZATHOTH_LLM_PROVIDERS"}
 
 def _resolve_api_key() -> SecretStr:
     """Check AZATHOTH_GEMINI_API_KEY first, then fall back to GEMINI_API_KEY."""
-    key = os.environ.get("AZATHOTH_GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
+    key = os.environ.get("AZATHOTH_GEMINI_API_KEY") or os.environ.get(
+        "GEMINI_API_KEY", ""
+    )
     return SecretStr(key)
 
 

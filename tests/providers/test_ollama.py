@@ -33,7 +33,10 @@ def _mock_response(status: int = 200, body: dict | None = None):
     resp.json.return_value = body or {}
     if status >= 400:
         from httpx import HTTPStatusError
-        resp.raise_for_status.side_effect = HTTPStatusError("err", request=MagicMock(), response=resp)
+
+        resp.raise_for_status.side_effect = HTTPStatusError(
+            "err", request=MagicMock(), response=resp
+        )
     else:
         resp.raise_for_status.return_value = None
     return resp
@@ -55,7 +58,10 @@ def _mock_client_ctx(response):
 @pytest.mark.asyncio
 async def test_generate_returns_text(provider):
     body = {"message": {"role": "assistant", "content": "hello ollama"}}
-    with patch("azathoth.providers.ollama.httpx.AsyncClient", return_value=_mock_client_ctx(_mock_response(200, body))):
+    with patch(
+        "azathoth.providers.ollama.httpx.AsyncClient",
+        return_value=_mock_client_ctx(_mock_response(200, body)),
+    ):
         result = await provider.generate("sys", "user")
     assert isinstance(result, LLMResponse)
     assert result.text == "hello ollama"
@@ -91,8 +97,10 @@ async def test_generate_passes_messages(provider):
 @pytest.mark.asyncio
 async def test_401_maps_to_auth_error(provider):
     body = {"error": "unauthorized"}
-    with patch("azathoth.providers.ollama.httpx.AsyncClient",
-               return_value=_mock_client_ctx(_mock_response(401, body))):
+    with patch(
+        "azathoth.providers.ollama.httpx.AsyncClient",
+        return_value=_mock_client_ctx(_mock_response(401, body)),
+    ):
         with pytest.raises(ProviderAuthError):
             await provider.generate("sys", "user")
 
@@ -100,8 +108,10 @@ async def test_401_maps_to_auth_error(provider):
 @pytest.mark.asyncio
 async def test_400_maps_to_schema_error(provider):
     body = {"error": "bad request"}
-    with patch("azathoth.providers.ollama.httpx.AsyncClient",
-               return_value=_mock_client_ctx(_mock_response(400, body))):
+    with patch(
+        "azathoth.providers.ollama.httpx.AsyncClient",
+        return_value=_mock_client_ctx(_mock_response(400, body)),
+    ):
         with pytest.raises(ProviderSchemaError):
             await provider.generate("sys", "user")
 
@@ -109,8 +119,10 @@ async def test_400_maps_to_schema_error(provider):
 @pytest.mark.asyncio
 async def test_500_maps_to_unavailable(provider):
     body = {"error": "internal error"}
-    with patch("azathoth.providers.ollama.httpx.AsyncClient",
-               return_value=_mock_client_ctx(_mock_response(500, body))):
+    with patch(
+        "azathoth.providers.ollama.httpx.AsyncClient",
+        return_value=_mock_client_ctx(_mock_response(500, body)),
+    ):
         with pytest.raises(ProviderUnavailable):
             await provider.generate("sys", "user")
 
@@ -118,6 +130,7 @@ async def test_500_maps_to_unavailable(provider):
 @pytest.mark.asyncio
 async def test_timeout_maps_to_unavailable(provider):
     import httpx
+
     ctx = _mock_client_ctx(None)
     ctx.__aenter__.return_value.post.side_effect = httpx.TimeoutException("timed out")
     with patch("azathoth.providers.ollama.httpx.AsyncClient", return_value=ctx):
@@ -128,6 +141,7 @@ async def test_timeout_maps_to_unavailable(provider):
 @pytest.mark.asyncio
 async def test_connect_error_maps_to_unavailable(provider):
     import httpx
+
     ctx = _mock_client_ctx(None)
     ctx.__aenter__.return_value.post.side_effect = httpx.ConnectError("refused")
     with patch("azathoth.providers.ollama.httpx.AsyncClient", return_value=ctx):
@@ -149,8 +163,10 @@ async def test_tool_calls_parsed(provider):
             ],
         }
     }
-    with patch("azathoth.providers.ollama.httpx.AsyncClient",
-               return_value=_mock_client_ctx(_mock_response(200, body))):
+    with patch(
+        "azathoth.providers.ollama.httpx.AsyncClient",
+        return_value=_mock_client_ctx(_mock_response(200, body)),
+    ):
         spec = ToolSpec(name="search", description="Search", parameters_schema={})
         result = await provider.generate("sys", "user", tools=[spec])
     assert len(result.tool_calls) == 1

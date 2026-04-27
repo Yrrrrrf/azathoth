@@ -36,7 +36,8 @@ def _tool_spec_to_ollama(spec: ToolSpec) -> dict[str, Any]:
         "function": {
             "name": spec.name,
             "description": spec.description,
-            "parameters": spec.parameters_schema or {"type": "object", "properties": {}},
+            "parameters": spec.parameters_schema
+            or {"type": "object", "properties": {}},
         },
     }
 

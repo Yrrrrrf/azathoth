@@ -100,7 +100,9 @@ async def generate(
         ProviderError (or subclass) on non-retryable failure.
         AllProvidersFailedError if every provider in the chain fails.
     """
-    response = await _resolve(system_prompt, user_message, json_mode=json_mode, tools=None, provider=provider)
+    response = await _resolve(
+        system_prompt, user_message, json_mode=json_mode, tools=None, provider=provider
+    )
     return response.text
 
 
@@ -126,7 +128,9 @@ async def generate_with_tools(
     Returns:
         ``LLMResponse`` with ``text`` and ``tool_calls`` populated.
     """
-    return await _resolve(system_prompt, user_message, json_mode=False, tools=tools, provider=provider)
+    return await _resolve(
+        system_prompt, user_message, json_mode=False, tools=tools, provider=provider
+    )
 
 
 async def _resolve(
@@ -139,7 +143,10 @@ async def _resolve(
 ) -> LLMResponse:
     """Core resolver — tries each provider in the chain, handles fallback."""
     from azathoth.providers.registry import get_provider
-    from azathoth.core.tools import build_emulator_system_prompt, parse_tool_calls_from_json
+    from azathoth.core.tools import (
+        build_emulator_system_prompt,
+        parse_tool_calls_from_json,
+    )
     from azathoth.config import config as _cfg
 
     _load_providers()

@@ -32,7 +32,10 @@ def test_tool_spec_with_schema():
     spec = ToolSpec(
         name="search",
         description="Search the web",
-        parameters_schema={"type": "object", "properties": {"query": {"type": "string"}}},
+        parameters_schema={
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+        },
     )
     assert spec.parameters_schema["type"] == "object"
 
@@ -73,7 +76,9 @@ def test_tool_call_frozen():
 
 
 def test_llm_response_basic():
-    r = LLMResponse(text="hello", provider="gemini", model="gemini-3.1-flash-lite-preview")
+    r = LLMResponse(
+        text="hello", provider="gemini", model="gemini-3.1-flash-lite-preview"
+    )
     assert r.text == "hello"
     assert r.tool_calls == []
     assert r.prompt_tokens is None
@@ -154,7 +159,8 @@ def test_conforming_class_passes_isinstance():
         name = "fake"
         supports_native_tools = False
 
-        async def generate(self, system_prompt, user_message, *, json_mode=False, tools=None):
-            ...
+        async def generate(
+            self, system_prompt, user_message, *, json_mode=False, tools=None
+        ): ...
 
     assert isinstance(FakeProvider(), Provider)

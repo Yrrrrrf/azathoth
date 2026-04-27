@@ -22,12 +22,14 @@ from azathoth.providers.base import ToolCall, ToolSpec
 
 class WeatherArgs(BaseModel):
     """Fetch current weather for a city."""
+
     city: str
     units: str = "celsius"
 
 
 class SearchArgs(BaseModel):
     """Search the web."""
+
     query: str
     max_results: Optional[int] = 10
 
@@ -80,8 +82,11 @@ def test_render_tools_as_json_spec():
 
 
 def test_render_tools_is_valid_json():
-    spec = ToolSpec(name="fn", description="A tool",
-                    parameters_schema={"type": "object", "properties": {"x": {"type": "integer"}}})
+    spec = ToolSpec(
+        name="fn",
+        description="A tool",
+        parameters_schema={"type": "object", "properties": {"x": {"type": "integer"}}},
+    )
     result = render_tools_as_json_spec([spec])
     parsed = json.loads(result)
     assert parsed[0]["parameters"]["properties"]["x"]["type"] == "integer"
@@ -102,9 +107,9 @@ def test_emulator_prompt_appends_tool_instructions():
 
 
 def test_parse_tool_calls_valid():
-    text = json.dumps({
-        "tool_calls": [{"name": "search", "arguments": {"q": "python"}}]
-    })
+    text = json.dumps(
+        {"tool_calls": [{"name": "search", "arguments": {"q": "python"}}]}
+    )
     calls = parse_tool_calls_from_json(text)
     assert len(calls) == 1
     assert calls[0].name == "search"
@@ -112,12 +117,14 @@ def test_parse_tool_calls_valid():
 
 
 def test_parse_tool_calls_multiple():
-    text = json.dumps({
-        "tool_calls": [
-            {"name": "fn1", "arguments": {"a": 1}},
-            {"name": "fn2", "arguments": {"b": 2}},
-        ]
-    })
+    text = json.dumps(
+        {
+            "tool_calls": [
+                {"name": "fn1", "arguments": {"a": 1}},
+                {"name": "fn2", "arguments": {"b": 2}},
+            ]
+        }
+    )
     calls = parse_tool_calls_from_json(text)
     assert len(calls) == 2
 
@@ -184,14 +191,20 @@ async def test_emulator_roundtrip_via_fake_provider():
     from azathoth.providers.base import LLMResponse, Provider
 
     spec = ToolSpec(name="search", description="Search", parameters_schema={})
-    tool_json_response = json.dumps({"tool_calls": [{"name": "search", "arguments": {"q": "hello"}}]})
+    tool_json_response = json.dumps(
+        {"tool_calls": [{"name": "search", "arguments": {"q": "hello"}}]}
+    )
 
     class FakeProvider:
         name = "fake"
         supports_native_tools = False
 
-        async def generate(self, system_prompt, user_message, *, json_mode=False, tools=None):
-            return LLMResponse(text=tool_json_response, provider="fake", model="fake-model")
+        async def generate(
+            self, system_prompt, user_message, *, json_mode=False, tools=None
+        ):
+            return LLMResponse(
+                text=tool_json_response, provider="fake", model="fake-model"
+            )
 
     # Emulator path: parse tool calls from response text
     fake = FakeProvider()

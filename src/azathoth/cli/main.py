@@ -34,7 +34,8 @@ def _main(
     version: Annotated[
         Optional[bool],
         typer.Option(
-            "--version", "-v",
+            "--version",
+            "-v",
             callback=_version_callback,
             is_eager=True,
             help="Show version and exit.",

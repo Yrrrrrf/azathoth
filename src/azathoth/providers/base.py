@@ -34,7 +34,9 @@ class ToolSpec(BaseModel, frozen=True):
     """
 
     name: str = Field(..., description="Unique tool name (snake_case)")
-    description: str = Field(..., description="One-sentence tool description for the model")
+    description: str = Field(
+        ..., description="One-sentence tool description for the model"
+    )
     parameters_schema: dict[str, Any] = Field(
         default_factory=dict,
         description="JSON Schema 2020-12 object for the tool's arguments",
@@ -63,10 +65,16 @@ class LLMResponse(BaseModel, frozen=True):
         default_factory=list,
         description="Tool calls requested by the model (empty when none)",
     )
-    provider: str = Field(..., description="Name of the provider that produced this response")
+    provider: str = Field(
+        ..., description="Name of the provider that produced this response"
+    )
     model: str = Field(..., description="Model identifier used for the call")
-    prompt_tokens: int | None = Field(default=None, description="Input token count if reported")
-    completion_tokens: int | None = Field(default=None, description="Output token count if reported")
+    prompt_tokens: int | None = Field(
+        default=None, description="Input token count if reported"
+    )
+    completion_tokens: int | None = Field(
+        default=None, description="Output token count if reported"
+    )
 
 
 # ── Provider Protocol ─────────────────────────────────────────────────────────

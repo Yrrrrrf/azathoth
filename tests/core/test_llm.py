@@ -18,7 +18,9 @@ from azathoth.providers.base import (
 # ── Helpers / fixtures ────────────────────────────────────────────────────────
 
 
-def _make_fake_provider(name: str = "fake", text: str = "hello", raises=None, tools_support: bool = True):
+def _make_fake_provider(
+    name: str = "fake", text: str = "hello", raises=None, tools_support: bool = True
+):
     """Build a minimal Provider-conforming object."""
     from azathoth.providers.base import ToolSpec
 
@@ -27,7 +29,9 @@ def _make_fake_provider(name: str = "fake", text: str = "hello", raises=None, to
             self.name = name
             self.supports_native_tools = tools_support
 
-        async def generate(self, system_prompt, user_message, *, json_mode=False, tools=None):
+        async def generate(
+            self, system_prompt, user_message, *, json_mode=False, tools=None
+        ):
             if raises:
                 raise raises
             return LLMResponse(text=text, provider=name, model="fake-model")
@@ -38,6 +42,7 @@ def _make_fake_provider(name: str = "fake", text: str = "hello", raises=None, to
 @pytest.fixture
 def patch_providers(monkeypatch):
     """Utility: patch the _load_providers side-effect and registry.get_provider."""
+
     def _patch(provider):
         monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
         monkeypatch.setattr(
@@ -48,6 +53,7 @@ def patch_providers(monkeypatch):
             "azathoth.config.config",
             MagicMock(active_providers=["fake"], llm_total_timeout=30.0),
         )
+
     return _patch
 
 
@@ -140,7 +146,10 @@ async def test_generate_provider_override(monkeypatch):
     fake = _make_fake_provider("override", text="override result")
     monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
     monkeypatch.setattr("azathoth.providers.registry.get_provider", lambda name: fake)
-    monkeypatch.setattr("azathoth.config.config", MagicMock(active_providers=["gemini"], llm_total_timeout=30.0))
+    monkeypatch.setattr(
+        "azathoth.config.config",
+        MagicMock(active_providers=["gemini"], llm_total_timeout=30.0),
+    )
 
     result = await generate("sys", "user", provider="override")
     assert result == "override result"
@@ -172,12 +181,19 @@ async def test_generate_with_tools_native_path(monkeypatch):
         name = "fake"
         supports_native_tools = True
 
-        async def generate(self, system_prompt, user_message, *, json_mode=False, tools=None):
+        async def generate(
+            self, system_prompt, user_message, *, json_mode=False, tools=None
+        ):
             return fake_response
 
     monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
-    monkeypatch.setattr("azathoth.providers.registry.get_provider", lambda name: _FakeWithTools())
-    monkeypatch.setattr("azathoth.config.config", MagicMock(active_providers=["fake"], llm_total_timeout=30.0))
+    monkeypatch.setattr(
+        "azathoth.providers.registry.get_provider", lambda name: _FakeWithTools()
+    )
+    monkeypatch.setattr(
+        "azathoth.config.config",
+        MagicMock(active_providers=["fake"], llm_total_timeout=30.0),
+    )
 
     spec = ToolSpec(name="search", description="Search", parameters_schema={})
     result = await generate_with_tools("sys", "user", [spec])
@@ -189,6 +205,7 @@ async def test_generate_with_tools_native_path(monkeypatch):
 async def test_generate_with_tools_emulator_path(monkeypatch):
     """Emulator path: provider without native tools receives enriched system prompt."""
     import json as _json
+
     tool_response = _json.dumps({"tool_calls": [{"name": "fn", "arguments": {"x": 1}}]})
 
     class _FakeNoTools:
@@ -196,13 +213,20 @@ async def test_generate_with_tools_emulator_path(monkeypatch):
         supports_native_tools = False
         received_tools = None
 
-        async def generate(self, system_prompt, user_message, *, json_mode=False, tools=None):
+        async def generate(
+            self, system_prompt, user_message, *, json_mode=False, tools=None
+        ):
             _FakeNoTools.received_tools = tools
             return LLMResponse(text=tool_response, provider="fake", model="fake-model")
 
     monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
-    monkeypatch.setattr("azathoth.providers.registry.get_provider", lambda name: _FakeNoTools())
-    monkeypatch.setattr("azathoth.config.config", MagicMock(active_providers=["fake"], llm_total_timeout=30.0))
+    monkeypatch.setattr(
+        "azathoth.providers.registry.get_provider", lambda name: _FakeNoTools()
+    )
+    monkeypatch.setattr(
+        "azathoth.config.config",
+        MagicMock(active_providers=["fake"], llm_total_timeout=30.0),
+    )
 
     spec = ToolSpec(name="fn", description="A function", parameters_schema={})
     result = await generate_with_tools("sys", "user", [spec])

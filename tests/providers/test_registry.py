@@ -5,7 +5,12 @@ from __future__ import annotations
 import pytest
 
 from azathoth.providers.base import LLMResponse, Provider, ProviderError, ToolSpec
-from azathoth.providers.registry import _PROVIDERS, get_provider, list_providers, register
+from azathoth.providers.registry import (
+    _PROVIDERS,
+    get_provider,
+    list_providers,
+    register,
+)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

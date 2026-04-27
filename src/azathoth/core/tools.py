@@ -60,7 +60,9 @@ def _flatten_schema(schema: dict[str, Any]) -> dict[str, Any]:
                 ref_name = node["$ref"].split("/")[-1]
                 if ref_name in defs:
                     return _resolve(defs[ref_name])
-            return {k: _resolve(v) for k, v in node.items() if k not in _SCALAR_DEFS_KEYS}
+            return {
+                k: _resolve(v) for k, v in node.items() if k not in _SCALAR_DEFS_KEYS
+            }
         if isinstance(node, list):
             return [_resolve(item) for item in node]
         return node
@@ -68,7 +70,9 @@ def _flatten_schema(schema: dict[str, Any]) -> dict[str, Any]:
     return _resolve(schema)  # type: ignore[return-value]
 
 
-def tool_spec_from_pydantic(model: type[BaseModel], *, name: str = "", description: str = "") -> ToolSpec:
+def tool_spec_from_pydantic(
+    model: type[BaseModel], *, name: str = "", description: str = ""
+) -> ToolSpec:
     """Derive a ``ToolSpec`` from a Pydantic model class.
 
     Args:
@@ -96,11 +100,15 @@ def tool_spec_from_pydantic(model: type[BaseModel], *, name: str = "", descripti
 
     # Strip Pydantic's top-level title / description from the schema itself
     # (they are expressed in ToolSpec.name / .description instead)
-    clean_schema = {k: v for k, v in flat_schema.items() if k not in ("title", "description")}
+    clean_schema = {
+        k: v for k, v in flat_schema.items() if k not in ("title", "description")
+    }
 
     resolved_name = name or _camel_to_snake(model.__name__)
     doc_lines = (model.__doc__ or "").strip().splitlines()
-    resolved_desc = description or (doc_lines[0].strip() if doc_lines else model.__name__)
+    resolved_desc = description or (
+        doc_lines[0].strip() if doc_lines else model.__name__
+    )
 
     return ToolSpec(
         name=resolved_name,
@@ -111,6 +119,7 @@ def tool_spec_from_pydantic(model: type[BaseModel], *, name: str = "", descripti
 
 def _camel_to_snake(name: str) -> str:
     import re
+
     s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 

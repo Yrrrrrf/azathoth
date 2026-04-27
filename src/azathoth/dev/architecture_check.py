@@ -47,7 +47,12 @@ _SRC_ROOT = Path(__file__).parent.parent  # …/src/azathoth
 _SDK_ALLOWED_FILES: frozenset[str] = frozenset({"providers/gemini.py"})
 
 # SDK namespace prefixes that must not appear outside allowed files.
-_SDK_NAMESPACES: tuple[str, ...] = ("google", "google.genai", "google.generativeai", "genai")
+_SDK_NAMESPACES: tuple[str, ...] = (
+    "google",
+    "google.genai",
+    "google.generativeai",
+    "genai",
+)
 
 # Provider implementation files (excludes framework files).
 _PROVIDER_FRAMEWORK_FILES: frozenset[str] = frozenset(
@@ -68,7 +73,12 @@ class Violation:
     message: str
 
     def to_dict(self) -> dict[str, Any]:
-        return {"rule": self.rule, "file": self.file, "line": self.line, "message": self.message}
+        return {
+            "rule": self.rule,
+            "file": self.file,
+            "line": self.line,
+            "message": self.message,
+        }
 
 
 @dataclass
@@ -166,7 +176,9 @@ def _check_r2_facade_boundary(files: list[Path]) -> list[Violation]:
             tree = ast.parse(facade.read_text("utf-8"))
         except SyntaxError as exc:
             violations.append(
-                Violation("R2:facade-boundary", "core/llm.py", None, f"SyntaxError: {exc}")
+                Violation(
+                    "R2:facade-boundary", "core/llm.py", None, f"SyntaxError: {exc}"
+                )
             )
             return violations
 
@@ -187,7 +199,9 @@ def _check_r2_facade_boundary(files: list[Path]) -> list[Violation]:
                 )
     else:
         violations.append(
-            Violation("R2:facade-boundary", "core/llm.py", None, "core/llm.py not found")
+            Violation(
+                "R2:facade-boundary", "core/llm.py", None, "core/llm.py not found"
+            )
         )
 
     # Check that no non-provider file does a *module-level* direct import of a
@@ -233,12 +247,18 @@ def _check_r3_provider_conformance() -> list[Violation]:
     providers_dir = _SRC_ROOT / "providers"
     if not providers_dir.exists():
         violations.append(
-            Violation("R3:provider-conformance", "providers/", None, "providers/ directory not found")
+            Violation(
+                "R3:provider-conformance",
+                "providers/",
+                None,
+                "providers/ directory not found",
+            )
         )
         return violations
 
     impl_files = [
-        f for f in providers_dir.glob("*.py")
+        f
+        for f in providers_dir.glob("*.py")
         if f.name not in _PROVIDER_FRAMEWORK_FILES and not f.name.startswith("_")
     ]
 
@@ -276,7 +296,9 @@ def _check_r3_provider_conformance() -> list[Violation]:
 
     except ImportError as exc:
         violations.append(
-            Violation("R3:provider-conformance", "providers/", None, f"Import failed: {exc}")
+            Violation(
+                "R3:provider-conformance", "providers/", None, f"Import failed: {exc}"
+            )
         )
 
     return violations
@@ -325,8 +347,7 @@ def main() -> None:
         sys.exit(0)
     else:
         print(
-            f"✗ azathoth-architecture-check  "
-            f"[{len(result.violations)} violation(s)]",
+            f"✗ azathoth-architecture-check  [{len(result.violations)} violation(s)]",
             file=sys.stderr,
         )
         for v in result.violations:

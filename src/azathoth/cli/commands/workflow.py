@@ -46,7 +46,9 @@ def commit_cmd(
         False, "--dry-run", help="Generate message without committing."
     ),
     provider: Optional[str] = typer.Option(
-        None, "--provider", "-p",
+        None,
+        "--provider",
+        "-p",
         help="Override the LLM provider for this invocation (e.g. 'ollama', 'gemini').",
     ),
 ):
@@ -66,7 +68,9 @@ def commit_cmd(
         system_prompt = get_commit_system_prompt(focus)
         with console.status("[bold cyan]Generating commit message…[/]"):
             try:
-                raw = await asyncio.to_thread(_sync_generate, system_prompt, diff, True, provider)
+                raw = await asyncio.to_thread(
+                    _sync_generate, system_prompt, diff, True, provider
+                )
             except LLMError as exc:
                 console.print(f"[bold red]LLM error:[/] {exc}")
                 raise typer.Exit(1)
@@ -172,7 +176,9 @@ def release_cmd(
     ),
     pre: bool = typer.Option(False, "--pre", help="Mark as prerelease."),
     provider: Optional[str] = typer.Option(
-        None, "--provider", "-p",
+        None,
+        "--provider",
+        "-p",
         help="Override the LLM provider for this invocation (e.g. 'ollama', 'gemini').",
     ),
 ):
@@ -245,8 +251,15 @@ def release_cmd(
 # ── helpers ──────────────────────────────────────────────────────────────
 
 
-def _sync_generate(system_prompt: str, user_message: str, json_mode: bool, provider: Optional[str] = None) -> str:
+def _sync_generate(
+    system_prompt: str,
+    user_message: str,
+    json_mode: bool,
+    provider: Optional[str] = None,
+) -> str:
     """Synchronous wrapper for the async generate() — used inside to_thread."""
     import asyncio as _aio
 
-    return _aio.run(generate(system_prompt, user_message, json_mode=json_mode, provider=provider))
+    return _aio.run(
+        generate(system_prompt, user_message, json_mode=json_mode, provider=provider)
+    )
