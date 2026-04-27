@@ -154,67 +154,72 @@ async def _resolve(
     _load_providers()
 
     chain = _get_provider_chain(provider)
-    per_provider_timeout = _cfg.llm_total_timeout
+    per_provider_timeout = _cfg.llm_per_provider_timeout
     causes: list[Exception] = []
 
-    for attempt, name in enumerate(chain):
-        try:
-            p = get_provider(name)
+    try:
+        async with asyncio.timeout(_cfg.llm_chain_timeout):
+            for attempt, name in enumerate(chain):
+                try:
+                    p = get_provider(name)
 
-            # Emulator path: inject tool catalog into system prompt for providers
-            # that don't support native tool calling.
-            effective_system = system_prompt
-            effective_tools: list[ToolSpec] | None = tools
-            emulator_mode = bool(tools) and not p.supports_native_tools
+                    # Emulator path: inject tool catalog into system prompt for providers
+                    # that don't support native tool calling.
+                    effective_system = system_prompt
+                    effective_tools: list[ToolSpec] | None = tools
+                    emulator_mode = bool(tools) and not p.supports_native_tools
 
-            if emulator_mode:
-                effective_system = build_emulator_system_prompt(
-                    system_prompt, tools or []
-                )
-                effective_tools = None  # don't pass tools natively
+                    if emulator_mode:
+                        effective_system = build_emulator_system_prompt(
+                            system_prompt, tools or []
+                        )
+                        effective_tools = None  # don't pass tools natively
 
-            response = await asyncio.wait_for(
-                p.generate(
-                    effective_system,
-                    user_message,
-                    json_mode=json_mode or emulator_mode,
-                    tools=effective_tools,
-                ),
-                timeout=per_provider_timeout,
-            )
-
-            # For emulator path: parse tool calls from the text response
-            if emulator_mode and not response.tool_calls:
-                parsed_calls = parse_tool_calls_from_json(response.text)
-                if parsed_calls:
-                    response = LLMResponse(
-                        text=response.text,
-                        tool_calls=parsed_calls,
-                        provider=response.provider,
-                        model=response.model,
-                        prompt_tokens=response.prompt_tokens,
-                        completion_tokens=response.completion_tokens,
+                    response = await asyncio.wait_for(
+                        p.generate(
+                            effective_system,
+                            user_message,
+                            json_mode=json_mode or emulator_mode,
+                            tools=effective_tools,
+                        ),
+                        timeout=per_provider_timeout,
                     )
 
-            return response
+                    # For emulator path: parse tool calls from the text response
+                    if emulator_mode and not response.tool_calls:
+                        parsed_calls = parse_tool_calls_from_json(response.text)
+                        if parsed_calls:
+                            response = LLMResponse(
+                                text=response.text,
+                                tool_calls=parsed_calls,
+                                provider_name=response.provider_name,
+                                model=response.model,
+                                prompt_tokens=response.prompt_tokens,
+                                completion_tokens=response.completion_tokens,
+                            )
 
-        except (ProviderUnavailable, asyncio.TimeoutError) as exc:
-            log.info(
-                "Provider fallback provider=%s attempt_index=%d error_class=%s",
-                name,
-                attempt,
-                type(exc).__name__,
-            )
-            causes.append(exc)
-            continue
+                    return response
 
-        except ProviderError:
-            # Non-retryable — halt chain immediately
-            raise
+                except (ProviderUnavailable, asyncio.TimeoutError) as exc:
+                    log.info(
+                        "Provider fallback provider=%s attempt_index=%d error_class=%s",
+                        name,
+                        attempt,
+                        type(exc).__name__,
+                    )
+                    causes.append(exc)
+                    continue
 
-        except KeyError:
-            log.warning("Provider '%s' is not registered; skipping.", name)
-            causes.append(KeyError(f"Provider '{name}' not registered"))
-            continue
+                except ProviderError:
+                    # Non-retryable — halt chain immediately
+                    raise
 
+                except KeyError:
+                    log.warning("Provider '%s' is not registered; skipping.", name)
+                    causes.append(KeyError(f"Provider '{name}' not registered"))
+                    continue
+
+    except asyncio.TimeoutError as exc:
+        causes.append(exc)
+        
     raise AllProvidersFailedError(causes)

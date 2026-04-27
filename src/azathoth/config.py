@@ -16,7 +16,7 @@ import warnings
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import (
     BaseSettings,
     EnvSettingsSource,
@@ -86,8 +86,14 @@ class Settings(BaseSettings):
     llm_providers: list[str] = Field(default_factory=lambda: ["gemini", "ollama"])
 
     #: Total wall-clock budget per generate() call across the entire chain.
-    #: Enforced via asyncio.wait_for at the resolver level.
-    llm_total_timeout: float = Field(default=120.0)
+    #: Enforced via asyncio.timeout at the resolver level.
+    llm_chain_timeout: float = Field(default=120.0)
+
+    #: Wall-clock budget per single provider in the chain.
+    llm_per_provider_timeout: float = Field(default=30.0)
+    
+    #: Deprecated alias for llm_chain_timeout
+    llm_total_timeout: float | None = Field(default=None)
 
     # ── Gemini ────────────────────────────────────────────────────────────
     gemini_api_key: SecretStr = Field(default_factory=_resolve_api_key)
@@ -129,6 +135,19 @@ class Settings(BaseSettings):
                 stacklevel=2,
             )
         return v
+
+    @model_validator(mode="before")
+    @classmethod
+    def warn_on_llm_total_timeout(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "llm_total_timeout" in data:
+            warnings.warn(
+                "AZATHOTH_LLM_TOTAL_TIMEOUT is deprecated; use AZATHOTH_LLM_CHAIN_TIMEOUT and AZATHOTH_LLM_PER_PROVIDER_TIMEOUT.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if "llm_chain_timeout" not in data:
+                data["llm_chain_timeout"] = data["llm_total_timeout"]
+        return data
 
     @classmethod
     def settings_customise_sources(

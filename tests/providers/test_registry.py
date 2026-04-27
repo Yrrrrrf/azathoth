@@ -32,7 +32,7 @@ def _make_fake(name: str = "fake", tools: bool = False):
             json_mode: bool = False,
             tools: list[ToolSpec] | None = None,
         ) -> LLMResponse:
-            return LLMResponse(text="ok", provider=self.name, model="fake-model")
+            return LLMResponse(text="ok", provider_name=self.name, model="fake-model")
 
     return _Fake
 

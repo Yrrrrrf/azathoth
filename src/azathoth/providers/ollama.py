@@ -137,7 +137,7 @@ class OllamaProvider:
             return LLMResponse(
                 text=text,
                 tool_calls=tool_calls,
-                provider=self.name,
+                provider_name=self.name,
                 model=self._model,
                 prompt_tokens=usage[0],
                 completion_tokens=usage[1],

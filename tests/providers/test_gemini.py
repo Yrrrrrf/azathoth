@@ -44,7 +44,7 @@ async def test_generate_returns_text(provider, mock_genai_client):
     result = await provider.generate("sys", "user")
     assert isinstance(result, LLMResponse)
     assert result.text == "hello"
-    assert result.provider == "gemini"
+    assert result.provider_name == "gemini"
     assert result.prompt_tokens == 10
 
 

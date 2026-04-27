@@ -65,7 +65,7 @@ async def test_generate_returns_text(provider):
         result = await provider.generate("sys", "user")
     assert isinstance(result, LLMResponse)
     assert result.text == "hello ollama"
-    assert result.provider == "ollama"
+    assert result.provider_name == "ollama"
 
 
 @pytest.mark.asyncio

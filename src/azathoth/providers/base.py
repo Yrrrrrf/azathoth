@@ -67,7 +67,7 @@ class LLMResponse(BaseModel, frozen=True):
         default_factory=list,
         description="Tool calls requested by the model (empty when none)",
     )
-    provider: str = Field(
+    provider_name: str = Field(
         ..., description="Name of the provider that produced this response"
     )
     model: str = Field(..., description="Model identifier used for the call")

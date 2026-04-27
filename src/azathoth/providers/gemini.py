@@ -140,7 +140,7 @@ class GeminiProvider:
             return LLMResponse(
                 text=text,
                 tool_calls=tool_calls,
-                provider=self.name,
+                provider_name=self.name,
                 model=self._model,
                 prompt_tokens=getattr(
                     response.usage_metadata, "prompt_token_count", None

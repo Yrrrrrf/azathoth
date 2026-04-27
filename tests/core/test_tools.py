@@ -203,7 +203,7 @@ async def test_emulator_roundtrip_via_fake_provider():
             self, system_prompt, user_message, *, json_mode=False, tools=None
         ):
             return LLMResponse(
-                text=tool_json_response, provider="fake", model="fake-model"
+                text=tool_json_response, provider_name="fake", model="fake-model"
             )
 
     # Emulator path: parse tool calls from response text
