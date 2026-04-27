@@ -46,7 +46,7 @@ def patch_providers(monkeypatch):
         )
         monkeypatch.setattr(
             "azathoth.config.config",
-            MagicMock(active_providers=["fake"]),
+            MagicMock(active_providers=["fake"], llm_total_timeout=30.0),
         )
     return _patch
 
@@ -77,7 +77,7 @@ async def test_generate_provider_unavailable_falls_through(monkeypatch):
     monkeypatch.setattr("azathoth.providers.registry.get_provider", _get)
     monkeypatch.setattr(
         "azathoth.config.config",
-        MagicMock(active_providers=["p1", "p2"]),
+        MagicMock(active_providers=["p1", "p2"], llm_total_timeout=30.0),
     )
 
     result = await generate("sys", "user")
@@ -101,7 +101,7 @@ async def test_generate_non_retryable_halts_chain(monkeypatch):
     monkeypatch.setattr("azathoth.providers.registry.get_provider", _get)
     monkeypatch.setattr(
         "azathoth.config.config",
-        MagicMock(active_providers=["p1", "p2"]),
+        MagicMock(active_providers=["p1", "p2"], llm_total_timeout=30.0),
     )
 
     with pytest.raises(ProviderError):
@@ -122,7 +122,7 @@ async def test_all_providers_fail_raises_all_failed(monkeypatch):
     monkeypatch.setattr("azathoth.providers.registry.get_provider", _get)
     monkeypatch.setattr(
         "azathoth.config.config",
-        MagicMock(active_providers=["p1", "p2"]),
+        MagicMock(active_providers=["p1", "p2"], llm_total_timeout=30.0),
     )
 
     with pytest.raises(AllProvidersFailedError) as exc_info:
@@ -140,7 +140,7 @@ async def test_generate_provider_override(monkeypatch):
     fake = _make_fake_provider("override", text="override result")
     monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
     monkeypatch.setattr("azathoth.providers.registry.get_provider", lambda name: fake)
-    monkeypatch.setattr("azathoth.config.config", MagicMock(active_providers=["gemini"]))
+    monkeypatch.setattr("azathoth.config.config", MagicMock(active_providers=["gemini"], llm_total_timeout=30.0))
 
     result = await generate("sys", "user", provider="override")
     assert result == "override result"
@@ -177,7 +177,7 @@ async def test_generate_with_tools_native_path(monkeypatch):
 
     monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
     monkeypatch.setattr("azathoth.providers.registry.get_provider", lambda name: _FakeWithTools())
-    monkeypatch.setattr("azathoth.config.config", MagicMock(active_providers=["fake"]))
+    monkeypatch.setattr("azathoth.config.config", MagicMock(active_providers=["fake"], llm_total_timeout=30.0))
 
     spec = ToolSpec(name="search", description="Search", parameters_schema={})
     result = await generate_with_tools("sys", "user", [spec])
@@ -202,7 +202,7 @@ async def test_generate_with_tools_emulator_path(monkeypatch):
 
     monkeypatch.setattr("azathoth.core.llm._load_providers", lambda: None)
     monkeypatch.setattr("azathoth.providers.registry.get_provider", lambda name: _FakeNoTools())
-    monkeypatch.setattr("azathoth.config.config", MagicMock(active_providers=["fake"]))
+    monkeypatch.setattr("azathoth.config.config", MagicMock(active_providers=["fake"], llm_total_timeout=30.0))
 
     spec = ToolSpec(name="fn", description="A function", parameters_schema={})
     result = await generate_with_tools("sys", "user", [spec])

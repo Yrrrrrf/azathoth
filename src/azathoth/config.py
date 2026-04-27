@@ -1,21 +1,25 @@
 """azathoth.config — application settings (pydantic-settings).
 
-Nested structure (Phase 3+):
-  - ``Settings.gemini_*``  flat fields kept for backward compat (emit DeprecationWarning)
-  - ``Settings.llm_provider``   single-provider override
-  - ``Settings.llm_providers``  ordered fallback chain (Phase 6)
+Provider selection (Phase 3+):
+  - ``Settings.llm_provider``   single-provider override (takes precedence)
+  - ``Settings.llm_providers``  ordered fallback chain — accepted as JSON list
+                                 OR comma-separated string from env var
+  - ``Settings.llm_total_timeout``  wall-clock budget enforced by resolver
   - ``Settings.ollama_*``       Ollama daemon config (Phase 4)
 """
 
 from __future__ import annotations
 
+import json
 import os
 import warnings
 from pathlib import Path
+from typing import Any
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import (
     BaseSettings,
+    EnvSettingsSource,
     PydanticBaseSettingsSource,
     SettingsConfigDict,
     TomlConfigSettingsSource,
@@ -26,11 +30,43 @@ _CONFIG_FILE = _CONFIG_DIR / "config.toml"
 
 _PREVIEW_TAGS = ("preview", "experimental", "exp")
 
+# Fields whose env-var values need pre-processing before pydantic-settings'
+# decode_complex_value (json.loads) runs.
+_LIST_FIELDS_ENV_KEYS = {"AZATHOTH_LLM_PROVIDERS"}
+
 
 def _resolve_api_key() -> SecretStr:
     """Check AZATHOTH_GEMINI_API_KEY first, then fall back to GEMINI_API_KEY."""
     key = os.environ.get("AZATHOTH_GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
     return SecretStr(key)
+
+
+def _coerce_list_env(raw: str) -> list[str]:
+    """Parse a list from either a JSON array or a comma-separated string."""
+    stripped = raw.strip()
+    if stripped.startswith("["):
+        return [str(item) for item in json.loads(stripped)]
+    return [item.strip() for item in stripped.split(",") if item.strip()]
+
+
+class _ListAwareEnvSource(EnvSettingsSource):
+    """Custom env source that pre-normalises list fields to JSON before pydantic
+    tries to json.loads them.  This makes both ``'a,b'`` and ``'["a","b"]'``
+    forms work transparently."""
+
+    def prepare_field_value(
+        self,
+        field_name: str,
+        field: Any,
+        value: Any,
+        value_is_complex: bool,
+    ) -> Any:
+        env_key = f"AZATHOTH_{field_name.upper()}"
+        if env_key in _LIST_FIELDS_ENV_KEYS and isinstance(value, str):
+            coerced = _coerce_list_env(value)
+            # Re-encode as JSON so the parent's json.loads path succeeds
+            value = json.dumps(coerced)
+        return super().prepare_field_value(field_name, field, value, value_is_complex)
 
 
 class Settings(BaseSettings):
@@ -41,7 +77,15 @@ class Settings(BaseSettings):
 
     #: Ordered fallback chain (Phase 6).  The resolver tries each in order,
     #: falling through on ``ProviderUnavailable``.
+    #:
+    #: Set via AZATHOTH_LLM_PROVIDERS as a JSON list or comma-separated string:
+    #:   AZATHOTH_LLM_PROVIDERS='["gemini","ollama"]'
+    #:   AZATHOTH_LLM_PROVIDERS='gemini,ollama'
     llm_providers: list[str] = Field(default_factory=lambda: ["gemini", "ollama"])
+
+    #: Total wall-clock budget per generate() call across the entire chain.
+    #: Enforced via asyncio.wait_for at the resolver level.
+    llm_total_timeout: float = Field(default=120.0)
 
     # ── Gemini ────────────────────────────────────────────────────────────
     gemini_api_key: SecretStr = Field(default_factory=_resolve_api_key)
@@ -95,7 +139,7 @@ class Settings(BaseSettings):
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         return (
             init_settings,
-            env_settings,
+            _ListAwareEnvSource(settings_cls),  # replaces default env_settings
             TomlConfigSettingsSource(settings_cls, toml_file=_CONFIG_FILE),
         )
 

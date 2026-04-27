@@ -13,6 +13,7 @@ The google-genai SDK (or any other provider SDK) is never imported here.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from azathoth.providers.base import (
@@ -139,10 +140,12 @@ async def _resolve(
     """Core resolver — tries each provider in the chain, handles fallback."""
     from azathoth.providers.registry import get_provider
     from azathoth.core.tools import build_emulator_system_prompt, parse_tool_calls_from_json
+    from azathoth.config import config as _cfg
 
     _load_providers()
 
     chain = _get_provider_chain(provider)
+    per_provider_timeout = _cfg.llm_total_timeout
     causes: list[Exception] = []
 
     for attempt, name in enumerate(chain):
@@ -159,11 +162,14 @@ async def _resolve(
                 effective_system = build_emulator_system_prompt(system_prompt, tools)  # type: ignore[arg-type]
                 effective_tools = None  # don't pass tools natively
 
-            response = await p.generate(
-                effective_system,
-                user_message,
-                json_mode=json_mode or emulator_mode,
-                tools=effective_tools,
+            response = await asyncio.wait_for(
+                p.generate(
+                    effective_system,
+                    user_message,
+                    json_mode=json_mode or emulator_mode,
+                    tools=effective_tools,
+                ),
+                timeout=per_provider_timeout,
             )
 
             # For emulator path: parse tool calls from the text response
@@ -181,7 +187,7 @@ async def _resolve(
 
             return response
 
-        except ProviderUnavailable as exc:
+        except (ProviderUnavailable, asyncio.TimeoutError) as exc:
             log.info(
                 "Provider fallback provider=%s attempt_index=%d error_class=%s",
                 name,

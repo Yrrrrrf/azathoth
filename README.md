@@ -6,19 +6,19 @@
 <div align="center">
 
 <!-- CORE BADGES -->
-
 [![GitHub: Repo](https://img.shields.io/badge/Azathoth-58A6FF?&logo=github)](https://github.com/Yrrrrrf/Azathoth)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 <!-- Rust based projects -->
-
 [![Crates.io](https://img.shields.io/crates/v/azathoth)](https://crates.io/crates/azathoth)
 [![Crates.io Downloads](https://img.shields.io/crates/d/azathoth)](https://crates.io/crates/azathoth)
 [![docs.rs](https://img.shields.io/badge/docs.rs-azathoth-66c2a5)](https://docs.rs/azathoth)
 
 <!-- Python based projects -->
-<!-- [![PyPI version](https://img.shields.io/pypi/v/azathoth.svg)](https://pypi.org/project/azathoth/) -->
-<!-- [![PyPI Downloads](https://img.shields.io/pypi/dm/azathoth.svg)](https://pypi.org/project/azathoth/) -->
+[![PyPI version](https://img.shields.io/pypi/v/azathoth.svg)](https://pypi.org/project/azathoth/)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/azathoth.svg)](https://pypi.org/project/azathoth/)
+[![Downloads](https://pepy.tech/badge/azathoth)](https://pepy.tech/project/azathoth)
+
 
 </div>
 
