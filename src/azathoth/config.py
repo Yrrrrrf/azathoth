@@ -122,19 +122,19 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    @field_validator("gemini_model")
-    @classmethod
-    def warn_on_preview_model(cls, v: str) -> str:
-        """Emit a UserWarning when the configured model name looks like a preview tag."""
-        if any(tag in v.lower() for tag in _PREVIEW_TAGS):
-            warnings.warn(
-                f"Configured Gemini model '{v}' contains a preview/experimental tag. "
-                "Preview models may be deprecated or removed without notice. "
-                "Consider pinning a stable model identifier.",
-                UserWarning,
-                stacklevel=2,
-            )
-        return v
+    # @field_validator("gemini_model")
+    # @classmethod
+    # def warn_on_preview_model(cls, v: str) -> str:
+    #     """Emit a UserWarning when the configured model name looks like a preview tag."""
+    #     if any(tag in v.lower() for tag in _PREVIEW_TAGS):
+    #         warnings.warn(
+    #             f"Configured Gemini model '{v}' contains a preview/experimental tag. "
+    #             "Preview models may be deprecated or removed without notice. "
+    #             "Consider pinning a stable model identifier.",
+    #             UserWarning,
+    #             stacklevel=2,
+    #         )
+    #     return v
 
     @model_validator(mode="before")
     @classmethod
