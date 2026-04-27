@@ -34,7 +34,6 @@ dev = [
 ]
 
 [project.scripts]
-az = "azathoth.cli.main:app"
 azathoth = "azathoth.cli.main:app"
 workflow = "azathoth.mcp.workflow:run"
 azathoth-import-check = "azathoth.dev.import_check:main"
