@@ -16,7 +16,7 @@ import warnings
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import (
     BaseSettings,
     EnvSettingsSource,
@@ -35,12 +35,24 @@ _PREVIEW_TAGS = ("preview", "experimental", "exp")
 _LIST_FIELDS_ENV_KEYS = {"AZATHOTH_LLM_PROVIDERS"}
 
 
+def _unquote(value: str) -> str:
+    """Strip whitespace and a single layer of matched surrounding quotes.
+
+    Defends against naive shell-based .env loaders that don't follow the
+    dotenv spec (e.g. some nushell helpers that do `export KEY=VALUE` verbatim).
+    """
+    v = value.strip()
+    if len(v) >= 2 and v[0] == v[-1] and v[0] in ("'", '"'):
+        v = v[1:-1]
+    return v
+
+
 def _resolve_api_key() -> SecretStr:
     """Check AZATHOTH_GEMINI_API_KEY first, then fall back to GEMINI_API_KEY."""
-    key = os.environ.get("AZATHOTH_GEMINI_API_KEY") or os.environ.get(
+    raw = os.environ.get("AZATHOTH_GEMINI_API_KEY") or os.environ.get(
         "GEMINI_API_KEY", ""
     )
-    return SecretStr(key)
+    return SecretStr(_unquote(raw))
 
 
 def _coerce_list_env(raw: str) -> list[str]:
