@@ -12,7 +12,6 @@ from azathoth.providers.registry import (
     register,
 )
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
@@ -71,7 +70,7 @@ def test_list_providers_sorted():
 
 def test_register_non_callable_raises():
     with pytest.raises(TypeError):
-        register("bad", "not-a-callable")  # ty: ignore[invalid-argument-type]
+        register("bad", "not-a-callable")
 
 
 def test_register_empty_name_raises():
@@ -79,17 +78,36 @@ def test_register_empty_name_raises():
         register("", _make_fake(""))
 
 
-def test_register_name_mismatch_raises():
-    with pytest.raises(ValueError, match="must match"):
-        register("wrong-name", _make_fake("actual-name"))
+def test_register_name_mismatch_does_not_raise():
+    """Registration never instantiates the factory — see registry.register()
+    docstring: conformance (including name match) is checked lazily on first
+    resolution, not at registration time, so a missing API key can't crash
+    `import azathoth`."""
+    register("wrong-name", _make_fake("actual-name"))
+    assert "wrong-name" in list_providers()
 
 
-def test_register_non_provider_raises():
+def test_register_non_provider_does_not_raise():
     class NotProvider:
         pass
 
+    register("bad", NotProvider)
+    assert "bad" in list_providers()
+
+
+def test_get_provider_name_mismatch_raises():
+    register("wrong-name", _make_fake("actual-name"))
+    with pytest.raises(ValueError, match="must match"):
+        get_provider("wrong-name")
+
+
+def test_get_provider_non_provider_raises():
+    class NotProvider:
+        pass
+
+    register("bad", NotProvider)
     with pytest.raises(ProviderError, match="Protocol"):
-        register("bad", NotProvider)  # ty: ignore[invalid-argument-type]
+        get_provider("bad")
 
 
 # ── get_provider ──────────────────────────────────────────────────────────────

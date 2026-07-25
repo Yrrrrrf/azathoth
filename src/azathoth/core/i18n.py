@@ -1,12 +1,13 @@
+import asyncio
 import json
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Set
 
 from pydantic import BaseModel, Field
 
 from azathoth.core.exceptions import ConfigParseError, I18nError, TranslationError
-from azathoth.core.llm import generate, LLMError
+from azathoth.core.llm import LLMError, generate
+from azathoth.core.serde import read_json, write_json
 
 # Known translations for "Hello" and "Goodbye" for canary validation
 CANARY_TRANSLATIONS = {
@@ -25,19 +26,18 @@ CANARY_TRANSLATIONS = {
 }
 
 
-class InlangConfig(BaseModel):
+class InlangConfig(BaseModel, frozen=True):
     """Pydantic model for project.inlang/settings.json."""
 
     base_locale: str = Field(alias="baseLocale")
-    locales: List[str]
+    locales: list[str]
     path_pattern: str = Field(alias="plugin.inlang.messageFormat")
 
     @classmethod
-    def from_json(cls, path: Path) -> "InlangConfig":
+    def from_json(cls, path: Path) -> InlangConfig:
         """Parse settings.json and extract relevant fields."""
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            data = read_json(path)
 
             # extract the path pattern from the plugin config
             plugin_key = "plugin.inlang.messageFormat"
@@ -50,41 +50,41 @@ class InlangConfig(BaseModel):
                 **{plugin_key: data[plugin_key]["pathPattern"]},
             )
         except (json.JSONDecodeError, KeyError) as e:
-            raise ConfigParseError(f"Failed to parse inlang config at {path}: {str(e)}")
+            raise ConfigParseError(f"Failed to parse inlang config at {path}: {e!s}")
 
 
-class TranslationSet(BaseModel):
+class TranslationSet(BaseModel, frozen=True):
     """Represents a set of translations for a specific locale."""
 
     locale: str
-    messages: Dict[str, str]
+    messages: dict[str, str]
 
 
-class TranslationDiff(BaseModel):
+class TranslationDiff(BaseModel, frozen=True):
     """Difference between base and target translations."""
 
     locale: str
-    missing_keys: List[str]
-    orphan_keys: List[str]
+    missing_keys: list[str]
+    orphan_keys: list[str]
 
 
-class TranslationMatrix(BaseModel):
+class TranslationMatrix(BaseModel, frozen=True):
     """Key -> Map of locale to value."""
 
-    locales: List[str]
-    keys: List[str]
-    matrix: Dict[str, Dict[str, Optional[str]]]
+    locales: list[str]
+    keys: list[str]
+    matrix: dict[str, dict[str, str | None]]
 
 
-class PlaceholderWarning(BaseModel):
+class PlaceholderWarning(BaseModel, frozen=True):
     """Warning for missing or mismatched placeholders."""
 
     key: str
-    expected: Set[str]
-    actual: Set[str]
+    expected: set[str]
+    actual: set[str]
 
 
-def resolve_paths(config_path: Path, config: InlangConfig) -> Dict[str, Path]:
+def resolve_paths(config_path: Path, config: InlangConfig) -> dict[str, Path]:
     """Resolve locale file paths based on the pathPattern in config."""
     # settings.json is in project.inlang/settings.json
     # paths are relative to the parent of project.inlang
@@ -98,20 +98,17 @@ def resolve_paths(config_path: Path, config: InlangConfig) -> Dict[str, Path]:
     return paths
 
 
-def load_all_translations(paths: Dict[str, Path]) -> Dict[str, TranslationSet]:
+def load_all_translations(paths: dict[str, Path]) -> dict[str, TranslationSet]:
     """Load all translation files into memory."""
     translations = {}
     for locale, path in paths.items():
         if path.exists():
             try:
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    # Filter out $schema and other non-translation keys if they exist
-                    messages = {k: v for k, v in data.items() if not k.startswith("$")}
-                    translations[locale] = TranslationSet(
-                        locale=locale, messages=messages
-                    )
-            except (json.JSONDecodeError, OSError):
+                data = read_json(path)
+                # Filter out $schema and other non-translation keys if they exist
+                messages = {k: v for k, v in data.items() if not k.startswith("$")}
+                translations[locale] = TranslationSet(locale=locale, messages=messages)
+            except json.JSONDecodeError, OSError:
                 translations[locale] = TranslationSet(locale=locale, messages={})
         else:
             translations[locale] = TranslationSet(locale=locale, messages={})
@@ -132,7 +129,7 @@ def diff_against_base(base: TranslationSet, target: TranslationSet) -> Translati
 
 
 def build_matrix(
-    translations: Dict[str, TranslationSet], locales: List[str]
+    translations: dict[str, TranslationSet], locales: list[str]
 ) -> TranslationMatrix:
     """Construct the master registry matrix."""
     # Union of all keys from all sets, but primarily driven by base if available
@@ -203,7 +200,7 @@ def parse_llm_response(raw_json: str, expected_count: int) -> list[str]:
             )
         return data
     except json.JSONDecodeError as e:
-        raise TranslationError(f"Failed to decode LLM response: {str(e)}")
+        raise TranslationError(f"Failed to decode LLM response: {e!s}")
 
 
 def validate_canaries(response_values: list[str], locale: str) -> bool:
@@ -261,6 +258,7 @@ async def translate_locale(
     keys: list[str],
     values: list[str],
     sample_pairs: list[tuple[str, str]] | None = None,
+    provider: str | None = None,
 ) -> list[str]:
     """Full pipeline for a single locale."""
     if not keys:
@@ -269,7 +267,7 @@ async def translate_locale(
     system, user = build_prompt(locale, keys, values, sample_pairs)
 
     try:
-        raw_response = await generate(system, user, json_mode=True)
+        raw_response = await generate(system, user, json_mode=True, provider=provider)
         # expected_count = len(keys) + 2 (canaries)
         response_values = parse_llm_response(raw_response, len(keys) + 2)
 
@@ -281,7 +279,7 @@ async def translate_locale(
         return clean_values
 
     except (LLMError, TranslationError) as e:
-        raise TranslationError(f"Translation failed for {locale}: {str(e)}")
+        raise TranslationError(f"Translation failed for {locale}: {e!s}")
 
 
 def merge_translations(
@@ -300,19 +298,15 @@ def write_translations(path: Path, translations: TranslationSet):
     existing_data = {}
     if path.exists():
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                existing_data = json.load(f)
-        except (json.JSONDecodeError, OSError):
+            existing_data = read_json(path)
+        except json.JSONDecodeError, OSError:
             pass
 
     # Update with new messages, keeping $schema
     final_data = {k: v for k, v in existing_data.items() if k.startswith("$")}
     final_data.update(translations.messages)
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(final_data, f, ensure_ascii=False, indent=2)
-        f.write("\n")
+    write_json(path, final_data)
 
 
 def export_registry(matrix: TranslationMatrix, output: Path, fmt: str = "json") -> None:
@@ -324,9 +318,7 @@ def export_registry(matrix: TranslationMatrix, output: Path, fmt: str = "json") 
             "keys": matrix.keys,
             "translations": matrix.matrix,
         }
-        with open(output, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-            f.write("\n")
+        write_json(output, data)
     elif fmt == "py":
         with open(output, "w", encoding="utf-8") as f:
             f.write("REGISTRY = ")
@@ -345,14 +337,163 @@ def export_registry(matrix: TranslationMatrix, output: Path, fmt: str = "json") 
 def import_registry(path: Path) -> TranslationMatrix:
     """Read the master registry from a JSON file."""
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        # Handle both 'matrix' and 'translations' for backward compatibility during development
-        matrix_data = data.get("translations") or data.get("matrix")
-
+        data = read_json(path)
         return TranslationMatrix(
-            locales=data["locales"], keys=data["keys"], matrix=matrix_data
+            locales=data["locales"], keys=data["keys"], matrix=data["translations"]
         )
-    except (json.JSONDecodeError, KeyError, IOError) as e:
-        raise I18nError(f"Failed to import registry: {str(e)}")
+    except (OSError, json.JSONDecodeError, KeyError) as e:
+        raise I18nError(f"Failed to import registry: {e!s}")
+
+
+# ── DTOs (use-case layer) ────────────────────────────────────────────────
+
+
+class I18nProject(BaseModel, frozen=True):
+    """A loaded inlang project: config, resolved paths, and loaded translations."""
+
+    settings_path: Path
+    config: InlangConfig
+    paths: dict[str, Path]
+    translations: dict[str, TranslationSet]
+
+
+class LocaleCoverage(BaseModel, frozen=True):
+    """Translated-key coverage for one locale."""
+
+    locale: str
+    translated: int
+    total: int
+
+
+class LocaleOutcome(BaseModel, frozen=True):
+    """Result of attempting to translate one locale — success or error, never both."""
+
+    locale: str
+    keys_touched: int
+    values: TranslationSet | None = None
+    placeholder_warnings: list[PlaceholderWarning] = Field(default_factory=list)
+    error: str | None = None
+
+
+# ── Use cases ────────────────────────────────────────────────────────────
+
+
+def load_project(settings_path: Path) -> I18nProject:
+    """Parse settings.json and load every locale's translation file."""
+    config = InlangConfig.from_json(settings_path)
+    paths = resolve_paths(settings_path, config)
+    translations = load_all_translations(paths)
+    return I18nProject(
+        settings_path=settings_path,
+        config=config,
+        paths=paths,
+        translations=translations,
+    )
+
+
+def audit_project(
+    project: I18nProject,
+) -> tuple[TranslationMatrix, list[LocaleCoverage]]:
+    """Build the coverage matrix and per-locale totals for a loaded project."""
+    matrix = build_matrix(project.translations, project.config.locales)
+    totals = [
+        LocaleCoverage(
+            locale=locale,
+            translated=sum(1 for k in matrix.keys if matrix.matrix[k][locale]),
+            total=len(matrix.keys),
+        )
+        for locale in project.config.locales
+    ]
+    return matrix, totals
+
+
+async def _translate_one_locale(
+    locale: str,
+    base_set: TranslationSet,
+    target_set: TranslationSet,
+    *,
+    full: bool,
+    prune: bool,
+    provider: str | None,
+) -> LocaleOutcome:
+    """Translate one locale's missing (or all, if `full`) keys. Never raises —
+    failure is reported via `LocaleOutcome.error` so one bad locale cannot
+    abort the others in a `TaskGroup` fan-out."""
+    diff = diff_against_base(base_set, target_set)
+    keys_to_translate = list(base_set.messages.keys()) if full else diff.missing_keys
+
+    if not keys_to_translate:
+        return LocaleOutcome(locale=locale, keys_touched=0)
+
+    values_to_translate = [base_set.messages[k] for k in keys_to_translate]
+    existing_keys = [k for k in base_set.messages if k in target_set.messages]
+    samples = [
+        (base_set.messages[k], target_set.messages[k]) for k in existing_keys[:5]
+    ]
+
+    try:
+        new_values = await translate_locale(
+            locale, keys_to_translate, values_to_translate, samples, provider=provider
+        )
+        warnings = validate_placeholders(values_to_translate, new_values)
+        new_set = merge_translations(target_set, keys_to_translate, new_values)
+        if prune:
+            new_set = prune_orphans(new_set, base_set)
+        return LocaleOutcome(
+            locale=locale,
+            keys_touched=len(keys_to_translate),
+            values=new_set,
+            placeholder_warnings=warnings,
+        )
+    except TranslationError as e:
+        return LocaleOutcome(locale=locale, keys_touched=0, error=str(e))
+
+
+async def translate_project(
+    project: I18nProject,
+    full: bool = False,
+    prune: bool = False,
+    provider: str | None = None,
+) -> list[LocaleOutcome]:
+    """Translate every non-base locale concurrently; partial failure is explicit."""
+    base_locale = project.config.base_locale
+    base_set = project.translations[base_locale]
+    target_locales = [loc for loc in project.config.locales if loc != base_locale]
+
+    async with asyncio.TaskGroup() as tg:
+        tasks = [
+            tg.create_task(
+                _translate_one_locale(
+                    locale,
+                    base_set,
+                    project.translations[locale],
+                    full=full,
+                    prune=prune,
+                    provider=provider,
+                )
+            )
+            for locale in target_locales
+        ]
+
+    return [t.result() for t in tasks]
+
+
+def apply_translations(
+    project: I18nProject, outcomes: list[LocaleOutcome], prune: bool = False
+) -> list[Path]:
+    """Write every successful outcome's translations back to disk.
+
+    `prune` is re-applied here (idempotent against an already-pruned set) so
+    a caller may invoke `apply_translations` directly against outcomes that
+    were not produced through `translate_project`.
+    """
+    base_set = project.translations[project.config.base_locale]
+    written: list[Path] = []
+    for outcome in outcomes:
+        if outcome.values is None:
+            continue
+        final_set = prune_orphans(outcome.values, base_set) if prune else outcome.values
+        path = project.paths[outcome.locale]
+        write_translations(path, final_set)
+        written.append(path)
+    return written

@@ -1,34 +1,60 @@
-import pytest
 import json
 from pathlib import Path
+
+import pytest
+
+from azathoth.core.exceptions import TranslationError
 from azathoth.core.i18n import (
     InlangConfig,
-    resolve_paths,
-    load_all_translations,
-    diff_against_base,
-    build_matrix,
-    prune_orphans,
     TranslationSet,
+    build_matrix,
     build_prompt,
-    parse_llm_response,
-    validate_canaries,
-    validate_placeholders,
+    diff_against_base,
     export_registry,
     import_registry,
+    load_all_translations,
+    parse_llm_response,
+    prune_orphans,
+    resolve_paths,
+    validate_canaries,
+    validate_placeholders,
 )
-from azathoth.core.exceptions import TranslationError
 
 
 @pytest.fixture
-def i18n_root() -> Path:
-    """Return the absolute path to the i18n fixture root."""
-    return Path(__file__).parent.parent.parent / "i18n"
+def config_path(tmp_path: Path) -> Path:
+    """Build a hermetic inlang project under tmp_path and return its settings.json.
 
+    Every fixture is tmp_path-constructed — no dependency on a real
+    i18n/project.inlang/settings.json in the working tree (see §8 of
+    plan3.md: a test that fails because a file was deleted from your
+    checkout is not testing your code).
+    """
+    settings_path = tmp_path / "project.inlang" / "settings.json"
+    settings_path.parent.mkdir(parents=True)
+    settings_path.write_text(
+        json.dumps(
+            {
+                "baseLocale": "en",
+                "locales": ["en", "es", "ja"],
+                "plugin.inlang.messageFormat": {
+                    "pathPattern": "./translations/{locale}.json"
+                },
+            }
+        )
+    )
 
-@pytest.fixture
-def config_path(i18n_root: Path) -> Path:
-    """Return path to settings.json."""
-    return i18n_root / "project.inlang" / "settings.json"
+    translations_dir = tmp_path / "translations"
+    translations_dir.mkdir()
+    (translations_dir / "en.json").write_text(
+        json.dumps({"hello_world": "Hello {name} in English"})
+    )
+    (translations_dir / "es.json").write_text(
+        json.dumps({"hello_world": "Hola {name} en español"})
+    )
+    (translations_dir / "ja.json").write_text(json.dumps({}))
+
+    return settings_path
 
 
 def test_parse_inlang_config(config_path: Path):

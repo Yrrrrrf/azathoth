@@ -15,8 +15,9 @@ Exit criteria covered:
 from __future__ import annotations
 
 import asyncio
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from azathoth.providers.base import (
     AllProvidersFailedError,
@@ -27,7 +28,6 @@ from azathoth.providers.base import (
     ToolSpec,
 )
 from azathoth.providers.registry import _PROVIDERS
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -332,10 +332,11 @@ def test_all_providers_failed_is_provider_error():
 
 
 def test_all_providers_failed_causes():
-    """causes attribute must hold the list of underlying exceptions."""
+    """causes attribute must hold the underlying exceptions, in order."""
     causes = [ProviderUnavailable("a"), ProviderUnavailable("b")]
     err = AllProvidersFailedError(causes)
-    assert err.causes is causes
+    assert list(err.causes) == causes
+    assert err.exceptions == tuple(causes)
 
 
 # ── Logging: no sensitive data leakage ────────────────────────────────────────
@@ -344,8 +345,8 @@ def test_all_providers_failed_causes():
 @pytest.mark.asyncio
 async def test_fallback_log_does_not_leak_api_key(monkeypatch, caplog):
     """Fallback log records must not contain key-shaped tokens (30+ alphanum chars)."""
-    import re
     import logging
+    import re
 
     fake_key = "A" * 35  # key-shaped token
 

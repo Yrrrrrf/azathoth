@@ -8,8 +8,6 @@ for Phase 5.  Set ``supports_native_tools = True`` — Ollama supports
 the OpenAI-style tool calling spec from version 0.20.2+.
 """
 
-from __future__ import annotations
-
 import json
 import logging
 from typing import Any
@@ -25,6 +23,7 @@ from azathoth.providers.base import (
     ToolCall,
     ToolSpec,
 )
+from azathoth.providers.registry import register
 
 log = logging.getLogger(__name__)
 
@@ -185,6 +184,4 @@ def _factory() -> OllamaProvider:
 
 
 # Self-registration at import time
-from azathoth.providers.registry import register as _register  # noqa: E402
-
-_register("ollama", _factory)
+register("ollama", _factory)

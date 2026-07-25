@@ -1,36 +1,38 @@
 import asyncio
+import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any
 
 import typer
+from rich import box
 from rich.console import Console, RenderableType
 from rich.panel import Panel
-from rich.table import Table
-from rich import box
 from rich.progress import (
-    Progress,
-    SpinnerColumn,
     BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    ProgressColumn,
+    SpinnerColumn,
+    Task,
     TextColumn,
     TimeElapsedColumn,
-    MofNCompleteColumn,
-    ProgressColumn,
-    Task,
 )
+from rich.table import Table
 from rich.text import Text
-from azathoth.core.utils import format_size
+
 from azathoth.config import get_config
 from azathoth.core.ingest import (
-    ingest,
     IngestionResult,
-    detect_type,
     IngestType,
+    detect_type,
     fetch_user_repos,
     get_subpath_context,
+    ingest,
 )
+from azathoth.core.utils import format_size
 
-config = get_config()
+log = logging.getLogger(__name__)
 
 # --- AGGRESSIVE LOG SILENCING ---
 try:
@@ -52,7 +54,7 @@ class StatusSpinnerColumn(ProgressColumn):
         super().__init__()
         self.spinner = SpinnerColumn(spinner_name="dots")
 
-    def render(self, task: "Task") -> RenderableType:
+    def render(self, task: Task) -> RenderableType:
         if task.finished:
             icon = task.fields.get("status_icon", "[bold green]✓[/]")
             return Text.from_markup(icon)
@@ -81,7 +83,7 @@ def _display_info_panel(
     console.print(panel)
 
 
-def _display_metrics_panel(result: IngestionResult, save_path: Optional[Path]):
+def _display_metrics_panel(result: IngestionResult, save_path: Path | None):
     """The green summary panel at the end."""
     table = Table(show_header=False, box=None, padding=(0, 1))
     table.add_column(style="dim")
@@ -105,7 +107,9 @@ def _display_metrics_panel(result: IngestionResult, save_path: Optional[Path]):
 def list_reports():
     """List all saved ingestion reports."""
     reports = sorted(
-        config.reports_dir.glob("*.*"), key=lambda p: p.stat().st_mtime, reverse=True
+        get_config().reports_dir.glob("*.*"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
     )
 
     if not reports:
@@ -129,7 +133,7 @@ async def _ingest_single(
     target: str,
     list_only: bool,
     save: bool,
-    output: Optional[Path],
+    output: Path | None,
     fmt: str,
     clipboard: bool,
     ignore_gitignore: bool = False,
@@ -171,7 +175,7 @@ async def _ingest_single(
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         list_tag = "-list" if list_only else ""
         filename = f"{result.suggested_filename}{list_tag}-{timestamp}.{fmt}"
-        save_path = output or (config.reports_dir / filename)
+        save_path = output or (get_config().reports_dir / filename)
 
         full_report = result.format_report(fmt=fmt)
         save_path.write_text(full_report, encoding="utf-8")
@@ -225,7 +229,9 @@ async def _ingest_user(
     with Progress(*progress_cols, console=console, expand=False) as progress:
         main_task = progress.add_task(f"Ingesting {username}...", total=len(repos))
 
-        async def _work(repo: Dict[str, Any]):
+        async def _work(repo: dict[str, Any]) -> None:
+            """Never raises — one bad repo must not abort the whole profile
+            ingest. Failure is a structured log record, not silence."""
             async with semaphore:
                 try:
                     res = await ingest(
@@ -242,10 +248,18 @@ async def _ingest_user(
                             f"\n\n{'=' * 40}\nREPO: {res.suggested_filename}\n{'=' * 40}\n{res.content}"
                         )
                     progress.update(main_task, advance=1)
-                except Exception:
+                except Exception as exc:
+                    log.warning(
+                        "Repo ingest failed repo=%s error_class=%s message=%.200s",
+                        repo.get("clone_url", "?"),
+                        type(exc).__name__,
+                        str(exc),
+                    )
                     progress.update(main_task, advance=1, status_icon="[bold red]✗[/]")
 
-        await asyncio.gather(*[_work(r) for r in repos])
+        async with asyncio.TaskGroup() as tg:
+            for repo in repos:
+                tg.create_task(_work(repo))
 
     if not separate and full_content:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -258,7 +272,7 @@ async def _ingest_user(
 
 def main(
     ctx: typer.Context,
-    target: Optional[str] = typer.Argument(None, help="Path, GitHub URL, or Username"),
+    target: str | None = typer.Argument(None, help="Path, GitHub URL, or Username"),
     list_only: bool = typer.Option(
         False, "--list", "-l", help="Structure only, no file content"
     ),
@@ -268,7 +282,7 @@ def main(
         help="Ignore .gitignore patterns and ingest everything",
     ),
     save: bool = typer.Option(True, "--save/--no-save", help="Save report to file"),
-    output: Optional[Path] = typer.Option(
+    output: Path | None = typer.Option(
         None, "--output", "-o", help="Custom output path"
     ),
     format: str = typer.Option("txt", "--format", "-f", help="txt, md, xml"),
@@ -298,7 +312,7 @@ def main(
         if itype == IngestType.GITHUB_USER:
             await _ingest_user(
                 target,
-                output or config.reports_dir,
+                output or get_config().reports_dir,
                 format,
                 separate,
                 ignore_gitignore=ignore_gitignore,

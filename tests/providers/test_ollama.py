@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from azathoth.providers.base import (
     LLMResponse,
@@ -97,34 +98,40 @@ async def test_generate_passes_messages(provider):
 @pytest.mark.asyncio
 async def test_401_maps_to_auth_error(provider):
     body = {"error": "unauthorized"}
-    with patch(
-        "azathoth.providers.ollama.httpx.AsyncClient",
-        return_value=_mock_client_ctx(_mock_response(401, body)),
+    with (
+        patch(
+            "azathoth.providers.ollama.httpx.AsyncClient",
+            return_value=_mock_client_ctx(_mock_response(401, body)),
+        ),
+        pytest.raises(ProviderAuthError),
     ):
-        with pytest.raises(ProviderAuthError):
-            await provider.generate("sys", "user")
+        await provider.generate("sys", "user")
 
 
 @pytest.mark.asyncio
 async def test_400_maps_to_schema_error(provider):
     body = {"error": "bad request"}
-    with patch(
-        "azathoth.providers.ollama.httpx.AsyncClient",
-        return_value=_mock_client_ctx(_mock_response(400, body)),
+    with (
+        patch(
+            "azathoth.providers.ollama.httpx.AsyncClient",
+            return_value=_mock_client_ctx(_mock_response(400, body)),
+        ),
+        pytest.raises(ProviderSchemaError),
     ):
-        with pytest.raises(ProviderSchemaError):
-            await provider.generate("sys", "user")
+        await provider.generate("sys", "user")
 
 
 @pytest.mark.asyncio
 async def test_500_maps_to_unavailable(provider):
     body = {"error": "internal error"}
-    with patch(
-        "azathoth.providers.ollama.httpx.AsyncClient",
-        return_value=_mock_client_ctx(_mock_response(500, body)),
+    with (
+        patch(
+            "azathoth.providers.ollama.httpx.AsyncClient",
+            return_value=_mock_client_ctx(_mock_response(500, body)),
+        ),
+        pytest.raises(ProviderUnavailable),
     ):
-        with pytest.raises(ProviderUnavailable):
-            await provider.generate("sys", "user")
+        await provider.generate("sys", "user")
 
 
 @pytest.mark.asyncio

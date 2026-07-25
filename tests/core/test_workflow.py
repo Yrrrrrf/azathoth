@@ -1,5 +1,6 @@
 import pytest
-from azathoth.core.workflow import stage_all, commit, get_diff
+
+from azathoth.core.workflow import commit, get_diff, stage_all
 
 
 @pytest.mark.asyncio

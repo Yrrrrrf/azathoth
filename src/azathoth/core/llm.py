@@ -2,6 +2,7 @@
 
 Public surface:
   - ``generate(system, user, *, json_mode, provider)``        → str
+  - ``generate_model(system, user, model, *, provider)``      → T
   - ``generate_with_tools(system, user, tools, *, provider)`` → LLMResponse
   - ``LLMError``                   (legacy alias; prefer ProviderError subclasses)
   - ``ProviderError``, ``ProviderUnavailable``, ``ProviderAuthError``,
@@ -11,10 +12,11 @@ Consumer code imports from HERE only — never from ``providers/*`` directly.
 The google-genai SDK (or any other provider SDK) is never imported here.
 """
 
-from __future__ import annotations
-
 import asyncio
+import json
 import logging
+
+from pydantic import BaseModel, ValidationError
 
 from azathoth.providers.base import (
     AllProvidersFailedError,
@@ -35,16 +37,17 @@ log = logging.getLogger(__name__)
 LLMError = ProviderError
 
 __all__ = [
-    "generate",
-    "generate_with_tools",
+    "AllProvidersFailedError",
     "LLMError",
     "LLMResponse",
-    "ProviderError",
-    "ProviderUnavailable",
     "ProviderAuthError",
+    "ProviderError",
     "ProviderRateLimitError",
     "ProviderSchemaError",
-    "AllProvidersFailedError",
+    "ProviderUnavailable",
+    "generate",
+    "generate_model",
+    "generate_with_tools",
 ]
 
 
@@ -68,7 +71,7 @@ def _load_providers() -> None:
     This is the ONE place in ``core/`` that imports from ``providers/*``.
     Importing the modules triggers their ``register()`` call at module level.
     """
-    import azathoth.providers.gemini  # noqa: F401  (side-effect: registers "gemini")
+    import azathoth.providers.gemini
     import azathoth.providers.ollama  # noqa: F401  (side-effect: registers "ollama")
 
 
@@ -108,6 +111,38 @@ async def generate(
     return response.text
 
 
+async def generate_model[T: BaseModel](
+    system_prompt: str,
+    user_message: str,
+    model: type[T],
+    *,
+    provider: str | None = None,
+) -> T:
+    """Send a prompt in JSON mode and validate the response against *model*.
+
+    Replaces the hand-written ``json.loads`` + ``KeyError`` guard that
+    previously let malformed responses (e.g. wrong field types) sail through
+    unchecked at every call site.
+
+    Raises:
+        ProviderError (or subclass) on non-retryable failure.
+        AllProvidersFailedError if every provider in the chain fails.
+        ProviderSchemaError if the response is not valid JSON or does not
+                            match *model*'s schema.
+    """
+    raw = await generate(system_prompt, user_message, json_mode=True, provider=provider)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ProviderSchemaError(f"Response was not valid JSON: {exc}") from exc
+    try:
+        return model.model_validate(data)
+    except ValidationError as exc:
+        raise ProviderSchemaError(
+            f"Response did not match {model.__name__}: {exc}"
+        ) from exc
+
+
 async def generate_with_tools(
     system_prompt: str,
     user_message: str,
@@ -144,12 +179,12 @@ async def _resolve(
     provider: str | None,
 ) -> LLMResponse:
     """Core resolver — tries each provider in the chain, handles fallback."""
-    from azathoth.providers.registry import get_provider
+    from azathoth.config import get_config
     from azathoth.core.tools import (
         build_emulator_system_prompt,
         parse_tool_calls_from_json,
     )
-    from azathoth.config import get_config
+    from azathoth.providers.registry import get_provider
 
     _cfg = get_config()
 
@@ -165,11 +200,12 @@ async def _resolve(
                 try:
                     p = get_provider(name)
 
-                    from rich.console import Console
-
                     model_name = getattr(p, "model", getattr(p, "_model", "unknown"))
-                    Console(stderr=True).print(
-                        f"\n\t[cyan]Requesting[/] [bold cyan]{name}[/] (model: [dim]{model_name}[/])"
+                    log.info(
+                        "Requesting provider=%s model=%s attempt_index=%d",
+                        name,
+                        model_name,
+                        attempt,
                     )
 
                     # Emulator path: inject tool catalog into system prompt for providers
@@ -209,7 +245,7 @@ async def _resolve(
 
                     return response
 
-                except (ProviderUnavailable, asyncio.TimeoutError) as exc:
+                except (TimeoutError, ProviderUnavailable) as exc:
                     log.info(
                         "Provider fallback provider=%s attempt_index=%d error_class=%s",
                         name,
@@ -228,7 +264,7 @@ async def _resolve(
                     causes.append(KeyError(f"Provider '{name}' not registered"))
                     continue
 
-    except asyncio.TimeoutError as exc:
+    except TimeoutError as exc:
         causes.append(exc)
 
     raise AllProvidersFailedError(causes)

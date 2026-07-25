@@ -54,9 +54,17 @@ from openai import OpenAI
 import os
 
 providers = {
-    "kimi":   ("https://api.moonshot.ai/v1",                            "MOONSHOT_API_KEY",   "kimi-k2"),
-    "qwen":   ("https://dashscope-intl.aliyuncs.com/compatible-mode/v1", "DASHSCOPE_API_KEY", "qwen-plus"),
-    "google": ("https://generativelanguage.googleapis.com/v1beta/openai/", "GEMINI_API_KEY",  "gemini-2.5-flash"),
+    "kimi": ("https://api.moonshot.ai/v1", "MOONSHOT_API_KEY", "kimi-k2"),
+    "qwen": (
+        "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        "DASHSCOPE_API_KEY",
+        "qwen-plus",
+    ),
+    "google": (
+        "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "GEMINI_API_KEY",
+        "gemini-2.5-flash",
+    ),
 }
 
 for name, (url, env, model) in providers.items():
@@ -72,6 +80,7 @@ Anthropic uses its own SDK (`anthropic` package), not the OpenAI shape:
 
 ```python
 import anthropic
+
 msg = anthropic.Anthropic().messages.create(
     model="claude-opus-4-7",
     max_tokens=64,

@@ -7,8 +7,6 @@ Provider-specific exceptions are defined in ``providers.base`` and
 re-exported here for consumer convenience.
 """
 
-from __future__ import annotations
-
 from azathoth.providers.base import (
     AllProvidersFailedError,
     ProviderAuthError,
@@ -25,6 +23,17 @@ class AzathothError(Exception):
 
 class LLMError(AzathothError):
     """Raised when an LLM façade call fails (legacy; prefer ProviderError subclasses)."""
+
+
+class GitError(AzathothError):
+    """Raised by core.git on a failed git/gh subprocess invocation."""
+
+
+class DirectiveError(AzathothError):
+    """Raised by core.directives when a directive folder exists but is
+    malformed (missing meta.toml or philosophy.md). A missing directive
+    folder is not an error — it returns None — but a half-migrated one must
+    never fail silently."""
 
 
 class I18nError(AzathothError):
@@ -46,6 +55,8 @@ class RegistryError(I18nError):
 __all__ = [
     "AzathothError",
     "LLMError",
+    "GitError",
+    "DirectiveError",
     "I18nError",
     "ConfigParseError",
     "TranslationError",

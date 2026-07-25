@@ -1,10 +1,12 @@
-import httpx
-import subprocess
-from pathlib import Path
 from enum import Enum, auto
-from typing import List, Dict, Any, Optional, Set
-from pydantic import BaseModel
+from pathlib import Path
+from typing import Any
+
+import httpx
 from gitingest import ingest_async
+from pydantic import BaseModel
+
+from azathoth.core.git import find_git_root
 from azathoth.core.utils import estimate_tokens
 
 
@@ -15,13 +17,13 @@ class IngestType(Enum):
     UNKNOWN = auto()
 
 
-class IngestionMetrics(BaseModel):
+class IngestionMetrics(BaseModel, frozen=True):
     file_count: int
     token_count: int
     size_bytes: int = 0
 
 
-class IngestionResult(BaseModel):
+class IngestionResult(BaseModel, frozen=True):
     summary: str
     tree: str
     content: str
@@ -73,8 +75,8 @@ def detect_type(target: str) -> IngestType:
 async def ingest(
     path: str,
     list_only: bool = False,
-    include_patterns: Optional[Set[str]] = None,
-    exclude_patterns: Optional[Set[str]] = None,
+    include_patterns: set[str] | None = None,
+    exclude_patterns: set[str] | None = None,
     ignore_gitignore: bool = False,
 ) -> IngestionResult:
     """
@@ -102,20 +104,18 @@ async def _ingest_file(path: Path) -> IngestionResult:
     # Context awareness: find git root to show relative path
     display_path = path.name
     suggested_name = path.stem
-    try:
-        cmd = ["git", "rev-parse", "--show-toplevel"]
-        result = subprocess.run(
-            cmd, cwd=path.parent, capture_output=True, text=True, check=True
-        )
-        git_root = Path(result.stdout.strip())
-        rel_path = path.relative_to(git_root)
-        display_path = str(rel_path)
-        flat_rel = str(rel_path).replace("/", "-").replace("\\", "-")
-        # Strip extension for suggested name if it's a long path
-        flat_name = flat_rel.rsplit(".", 1)[0] if "." in flat_rel else flat_rel
-        suggested_name = f"{git_root.name}--{flat_name}"
-    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
-        pass
+    git_root = await find_git_root(path.parent)
+    if git_root is not None:
+        try:
+            rel_path = path.relative_to(git_root)
+        except ValueError:
+            rel_path = None
+        if rel_path is not None:
+            display_path = str(rel_path)
+            flat_rel = str(rel_path).replace("/", "-").replace("\\", "-")
+            # Strip extension for suggested name if it's a long path
+            flat_name = flat_rel.rsplit(".", 1)[0] if "." in flat_rel else flat_rel
+            suggested_name = f"{git_root.name}--{flat_name}"
 
     formatted_content = f"FILE: {display_path}\n{'=' * 60}\n{content}"
 
@@ -136,8 +136,8 @@ async def _ingest_file(path: Path) -> IngestionResult:
 async def _ingest_directory(
     target: str,
     list_only: bool = False,
-    include_patterns: Optional[Set[str]] = None,
-    exclude_patterns: Optional[Set[str]] = None,
+    include_patterns: set[str] | None = None,
+    exclude_patterns: set[str] | None = None,
     ignore_gitignore: bool = False,
 ) -> IngestionResult:
     """
@@ -149,34 +149,31 @@ async def _ingest_directory(
     # Git-aware local ingestion: if we're in a subdirectory of a git repo,
     # ingest from the root to ensure .gitignore is properly applied.
     if p_target and p_target.is_dir() and not ignore_gitignore:
-        try:
-            cmd = ["git", "rev-parse", "--show-toplevel"]
-            res = subprocess.run(
-                cmd, cwd=p_target, capture_output=True, text=True, check=True
-            )
-            git_root = Path(res.stdout.strip())
+        git_root = await find_git_root(p_target)
 
-            if git_root != p_target and p_target.is_relative_to(git_root):
-                rel_path = p_target.relative_to(git_root)
-                ingest_target = str(git_root)
+        if (
+            git_root is not None
+            and git_root != p_target
+            and p_target.is_relative_to(git_root)
+        ):
+            rel_path = p_target.relative_to(git_root)
+            ingest_target = str(git_root)
 
-                # Adjust patterns to be relative to git_root
-                if include_patterns:
-                    new_inc = set()
-                    for pat in include_patterns:
-                        new_inc.add(str(rel_path / pat.lstrip("/")))
-                    include_patterns = new_inc
-                else:
-                    # If no include patterns, focus on the target subdirectory
-                    include_patterns = {f"{rel_path}/**"}
+            # Adjust patterns to be relative to git_root
+            if include_patterns:
+                new_inc = set()
+                for pat in include_patterns:
+                    new_inc.add(str(rel_path / pat.lstrip("/")))
+                include_patterns = new_inc
+            else:
+                # If no include patterns, focus on the target subdirectory
+                include_patterns = {f"{rel_path}/**"}
 
-                if exclude_patterns:
-                    new_exc = set()
-                    for pat in exclude_patterns:
-                        new_exc.add(str(rel_path / pat.lstrip("/")))
-                    exclude_patterns = new_exc
-        except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
-            pass
+            if exclude_patterns:
+                new_exc = set()
+                for pat in exclude_patterns:
+                    new_exc.add(str(rel_path / pat.lstrip("/")))
+                exclude_patterns = new_exc
 
     # 1. Perform ingestion
     summary, tree, content = await ingest_async(
@@ -212,7 +209,7 @@ async def _ingest_directory(
     )
 
 
-async def fetch_user_repos(username: str) -> List[Dict[str, Any]]:
+async def fetch_user_repos(username: str) -> list[dict[str, Any]]:
     """Fetches public repositories for a GitHub user."""
     clean_username = username.split("/")[-1]
     api_url = f"https://api.github.com/users/{clean_username}/repos"
@@ -232,7 +229,7 @@ def _parse_summary_metrics(summary: str) -> tuple[int, int]:
         if "Files analyzed:" in line:
             try:
                 file_count = int(line.split(":")[1].strip())
-            except (ValueError, IndexError):
+            except ValueError, IndexError:
                 pass
         elif "Estimated tokens:" in line:
             try:
@@ -243,7 +240,7 @@ def _parse_summary_metrics(summary: str) -> tuple[int, int]:
                     token_count = int(float(token_str.replace("m", "")) * 1_000_000)
                 else:
                     token_count = int(token_str)
-            except (ValueError, IndexError):
+            except ValueError, IndexError:
                 pass
     return file_count, token_count
 
@@ -264,31 +261,25 @@ async def _generate_filename(target: str) -> str:
                 idx = parts.index("tree") if "tree" in parts else parts.index("blob")
                 subpath = "-".join(parts[idx + 2 :])
                 return f"{repo_name}--{subpath}"
-            except (ValueError, IndexError):
+            except ValueError, IndexError:
                 pass
         return parts[-1] if parts else "report"
 
     # 2. Handle Local Paths
     target_path = Path(target_clean).resolve()
     if target_path.is_dir():
-        try:
-            cmd = ["git", "rev-parse", "--show-toplevel"]
-            result = subprocess.run(
-                cmd, cwd=target_path, capture_output=True, text=True, check=True
-            )
-            git_root = Path(result.stdout.strip())
+        git_root = await find_git_root(target_path)
+        if git_root is not None:
             if target_path != git_root:
                 rel_path = target_path.relative_to(git_root)
                 flat_rel = str(rel_path).replace("/", "-").replace("\\", "-")
                 return f"{git_root.name}--{flat_rel}"
             return git_root.name
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            pass
 
     return target_path.name or "report"
 
 
-async def get_subpath_context(target: str) -> Optional[tuple[str, str]]:
+async def get_subpath_context(target: str) -> tuple[str, str] | None:
     """Monorepo subdirectory detection."""
     # Handle files too: check parent directory
     p = Path(target).resolve()
@@ -297,16 +288,9 @@ async def get_subpath_context(target: str) -> Optional[tuple[str, str]]:
 
     target_dir = p if p.is_dir() else p.parent
 
-    try:
-        cmd = ["git", "rev-parse", "--show-toplevel"]
-        result = subprocess.run(
-            cmd, cwd=target_dir, capture_output=True, text=True, check=True
-        )
-        git_root = Path(result.stdout.strip())
-        if target_dir != git_root or not p.is_dir():
-            # If it's a file, we always want the relative path from root
-            rel_path = p.relative_to(git_root)
-            return git_root.name, str(rel_path)
-    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
-        pass
+    git_root = await find_git_root(target_dir)
+    if git_root is not None and (target_dir != git_root or not p.is_dir()):
+        # If it's a file, we always want the relative path from root
+        rel_path = p.relative_to(git_root)
+        return git_root.name, str(rel_path)
     return None

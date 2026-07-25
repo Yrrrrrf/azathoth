@@ -14,8 +14,6 @@ Public surface (re-exported here for convenience):
   - ``register``, ``get_provider``, ``list_providers``  — registry helpers
 """
 
-from __future__ import annotations
-
 from azathoth.providers.base import (
     AllProvidersFailedError,
     LLMResponse,

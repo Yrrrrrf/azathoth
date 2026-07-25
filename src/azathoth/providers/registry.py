@@ -13,10 +13,8 @@ Providers register themselves by importing this module and calling
 ``providers/__init__.py``.
 """
 
-from __future__ import annotations
-
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 from azathoth.providers.base import Provider, ProviderError
 
@@ -32,18 +30,20 @@ def register(name: str, factory: Callable[[], Provider]) -> None:
     """Register a provider factory under *name*.
 
     The factory must be a zero-argument callable that returns an object
-    satisfying the ``Provider`` Protocol.  Conformance is verified via
-    ``isinstance`` at registration time (requires ``@runtime_checkable``).
+    satisfying the ``Provider`` Protocol. Registration never calls the
+    factory: doing so would touch credentials, the network, or the
+    filesystem at import time (e.g. Gemini's factory raises on a missing
+    API key), which would crash ``import azathoth`` and defeat the fallback
+    chain in exactly the scenario it exists for. Conformance is instead
+    checked on first resolution in ``get_provider()``.
 
     Args:
         name:    Registry key (must match ``Provider.name`` on the instance).
         factory: Zero-argument callable returning a ``Provider`` instance.
 
     Raises:
-        TypeError:       If the factory is not callable.
-        ProviderError:   If the returned instance does not satisfy the Protocol.
-        ValueError:      If *name* is empty or the factory returns an instance
-                         whose ``name`` attribute does not match *name*.
+        TypeError:  If the factory is not callable.
+        ValueError: If *name* is empty.
     """
     if not callable(factory):
         raise TypeError(
@@ -52,9 +52,28 @@ def register(name: str, factory: Callable[[], Provider]) -> None:
     if not name:
         raise ValueError("Provider name must be a non-empty string")
 
-    # Instantiate once for conformance check, then discard — the real
-    # instance is created on demand in get_provider().
-    instance = factory()
+    _PROVIDERS[name] = factory
+    log.debug("Registered provider '%s' via %r", name, factory)
+
+
+def get_provider(name: str) -> Provider:
+    """Return a fresh Provider instance for *name*.
+
+    A new instance is created on every call so that the resolver can
+    construct isolated instances per fallback attempt. Protocol conformance
+    is checked here, on first use, rather than at registration time.
+
+    Raises:
+        KeyError:      If *name* has not been registered.
+        ProviderError: If the factory's return value does not satisfy the
+                       Protocol, or its ``name`` does not match *name*.
+    """
+    if name not in _PROVIDERS:
+        available = list(_PROVIDERS.keys())
+        raise KeyError(
+            f"Provider '{name}' is not registered. Available providers: {available}"
+        )
+    instance = _PROVIDERS[name]()
     if not isinstance(instance, Provider):
         raise ProviderError(
             f"Factory for '{name}' returned {type(instance)!r} which does not "
@@ -66,26 +85,7 @@ def register(name: str, factory: Callable[[], Provider]) -> None:
             f"Provider registered as '{name}' but instance.name == '{instance.name}'. "
             "They must match."
         )
-
-    _PROVIDERS[name] = factory
-    log.debug("Registered provider '%s' via %r", name, factory)
-
-
-def get_provider(name: str) -> Provider:
-    """Return a fresh Provider instance for *name*.
-
-    A new instance is created on every call so that the resolver can
-    construct isolated instances per fallback attempt.
-
-    Raises:
-        KeyError: If *name* has not been registered.
-    """
-    if name not in _PROVIDERS:
-        available = list(_PROVIDERS.keys())
-        raise KeyError(
-            f"Provider '{name}' is not registered. Available providers: {available}"
-        )
-    return _PROVIDERS[name]()
+    return instance
 
 
 def list_providers() -> list[str]:

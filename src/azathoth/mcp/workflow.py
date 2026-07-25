@@ -1,25 +1,29 @@
 """
 mcp/workflow.py — MCP server exposing git workflow tools.
 
-Presentation layer only — every tool wraps exactly one core/ operation.
-Runs on stdio transport via `uv run workflow`.
-"""
+Presentation layer only — every tool wraps exactly one core/workflow.py
+use case. Runs on stdio transport via `azathoth-mcp-workflow`.
 
-import json
+Each tool catches `AzathothError` locally and returns the message as tool
+text — an MCP tool raising is worse than an MCP tool reporting.
+"""
 
 from fastmcp import FastMCP
 
+from azathoth.config import check_preview_model
+from azathoth.core.exceptions import AzathothError
 from azathoth.core.workflow import (
-    stage_all,
-    commit,
     get_diff as core_get_diff,
+)
+from azathoth.core.workflow import (
     get_latest_tag,
     get_log_since,
-    create_release as core_create_release,
-    _run_git,
+    perform_commit,
+    perform_release,
+    propose_commit,
+    propose_release,
+    repo_status,
 )
-from azathoth.core.prompts import get_commit_system_prompt, get_release_system_prompt
-from azathoth.core.llm import generate, LLMError
 
 mcp = FastMCP(
     name="azathoth-workflow",
@@ -37,34 +41,18 @@ mcp = FastMCP(
 @mcp.tool()
 async def get_status() -> str:
     """Get a structured overview of the current repo: branch, staged/unstaged/untracked counts, latest tag, and commits since tag."""
-    _, branch, _ = await _run_git(["rev-parse", "--abbrev-ref", "HEAD"])
-    _, porcelain, _ = await _run_git(["status", "--porcelain"])
-
-    staged = unstaged = untracked = 0
-    for line in porcelain.splitlines():
-        if not line:
-            continue
-        x, y = line[0], line[1]
-        if x == "?":
-            untracked += 1
-        elif x != " ":
-            staged += 1
-        if y not in (" ", "?"):
-            unstaged += 1
-
-    tag = await get_latest_tag()
-    commits_since = 0
-    if tag:
-        log = await get_log_since(tag)
-        commits_since = len(log.splitlines()) if log else 0
+    try:
+        status = await repo_status()
+    except AzathothError as exc:
+        return f"Error: {exc}"
 
     return (
-        f"Branch: {branch}\n"
-        f"Staged: {staged}\n"
-        f"Unstaged: {unstaged}\n"
-        f"Untracked: {untracked}\n"
-        f"Latest tag: {tag or 'none'}\n"
-        f"Commits since tag: {commits_since}"
+        f"Branch: {status.branch}\n"
+        f"Staged: {status.staged}\n"
+        f"Unstaged: {status.unstaged}\n"
+        f"Untracked: {status.untracked}\n"
+        f"Latest tag: {status.latest_tag or 'none'}\n"
+        f"Commits since tag: {status.commits_since_tag}"
     )
 
 
@@ -78,27 +66,13 @@ async def get_diff(staged: bool = True) -> str:
 @mcp.tool()
 async def stage_and_commit(focus: str | None = None) -> str:
     """Stage all changes, generate an AI commit message, and commit. Pass an optional focus hint to guide the message."""
-    await stage_all()
-    diff = await core_get_diff(staged=True)
-    if not diff:
-        return "No staged changes — nothing to commit."
-
     try:
-        system_prompt = get_commit_system_prompt(focus)
-        raw = await generate(system_prompt, diff, json_mode=True)
-        data = json.loads(raw)
-        title = data["title"]
-        body = data.get("body", "")
-    except LLMError as exc:
-        return f"LLM error: {exc}"
-    except (json.JSONDecodeError, KeyError) as exc:
-        return f"Failed to parse LLM response: {exc}"
+        proposal = await propose_commit(focus=focus)
+        await perform_commit(proposal)
+    except AzathothError as exc:
+        return f"Error: {exc}"
 
-    res = await commit(title, body)
-    if res.success:
-        return f"✓ Committed: {title}"
-    else:
-        return f"✗ Commit failed: {res.stderr}"
+    return f"✓ Committed: {proposal.message.title}"
 
 
 @mcp.tool()
@@ -114,39 +88,19 @@ async def get_log() -> str:
 @mcp.tool()
 async def create_release(pre: bool = False) -> str:
     """Generate AI release notes from the commit log and publish via `gh release create`."""
-    tag = await get_latest_tag()
-    if not tag:
-        return "No previous tag found — cannot determine changelog."
-
-    log = await get_log_since(tag)
-    if not log:
-        return f"No commits since {tag} — nothing to release."
-
     try:
-        system_prompt = get_release_system_prompt()
-        user_msg = f"Previous tag: {tag}\n\nCommit log:\n{log}"
-        raw = await generate(system_prompt, user_msg, json_mode=True)
-        data = json.loads(raw)
-        new_tag = data["tag"]
-        notes = data["notes"]
-    except LLMError as exc:
-        return f"LLM error: {exc}"
-    except (json.JSONDecodeError, KeyError) as exc:
-        return f"Failed to parse LLM response: {exc}"
+        proposal = await propose_release()
+        await perform_release(proposal, prerelease=pre)
+    except AzathothError as exc:
+        return f"Error: {exc}"
 
-    res = await core_create_release(new_tag, notes, is_prerelease=pre)
-    if res.success:
-        return f"✓ Released {new_tag}\n\n{notes}"
-    else:
-        msg = f"✗ Release failed: {res.stderr}"
-        if res.message:
-            msg += f"\n{res.message}"
-        return msg
+    return f"✓ Released {proposal.notes.tag}\n\n{proposal.notes.notes}"
 
 
 # ── Entry point ──────────────────────────────────────────────────────────
 
 
 def run():
-    """Script entry point: `uv run workflow`."""
+    """Script entry point: `azathoth-mcp-workflow`."""
+    check_preview_model()
     mcp.run(transport="stdio")

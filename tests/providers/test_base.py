@@ -18,7 +18,6 @@ from azathoth.providers.base import (
     ToolSpec,
 )
 
-
 # ── ToolSpec ──────────────────────────────────────────────────────────────────
 
 
@@ -43,7 +42,7 @@ def test_tool_spec_with_schema():
 def test_tool_spec_frozen():
     spec = ToolSpec(name="t", description="d")
     with pytest.raises(Exception):  # frozen model
-        spec.name = "other"  # ty: ignore[invalid-assignment]
+        spec.name = "other"
 
 
 def test_tool_spec_missing_required_fields():
@@ -69,16 +68,14 @@ def test_tool_call_with_id():
 def test_tool_call_frozen():
     tc = ToolCall(name="fn", arguments={})
     with pytest.raises(Exception):
-        tc.name = "other"  # ty: ignore[invalid-assignment]
+        tc.name = "other"
 
 
 # ── LLMResponse ───────────────────────────────────────────────────────────────
 
 
 def test_llm_response_basic():
-    r = LLMResponse(
-        text="hello", provider_name="gemini", model="gemini-3.1-flash-lite-preview"
-    )
+    r = LLMResponse(text="hello", provider_name="gemini", model="gemini-3.6-flash-lite")
     assert r.text == "hello"
     assert r.tool_calls == []
     assert r.prompt_tokens is None
@@ -90,7 +87,7 @@ def test_llm_response_with_tool_calls():
         text="",
         tool_calls=[tc],
         provider_name="gemini",
-        model="gemini-3.1-flash-lite-preview",
+        model="gemini-3.6-flash-lite",
     )
     assert len(r.tool_calls) == 1
     assert r.tool_calls[0].name == "fn"
@@ -130,7 +127,7 @@ def test_all_providers_failed_error():
     causes = [ProviderUnavailable("p1"), ProviderError("p2")]
     err = AllProvidersFailedError(causes)
     assert issubclass(AllProvidersFailedError, ProviderError)
-    assert err.causes == causes
+    assert list(err.causes) == causes
     assert "p1" in str(err)
     assert "p2" in str(err)
 

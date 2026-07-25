@@ -4,23 +4,19 @@ from pathlib import Path
 import typer
 from rich.console import Console
 from rich.table import Table
-from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from azathoth.core.i18n import (
     InlangConfig,
     TranslationSet,
-    resolve_paths,
-    load_all_translations,
-    diff_against_base,
-    translate_locale,
-    merge_translations,
-    write_translations,
-    prune_orphans,
-    build_matrix,
+    apply_translations,
+    audit_project,
     export_registry,
     import_registry,
+    load_project,
+    resolve_paths,
+    translate_project,
+    write_translations,
 )
-from azathoth.core.exceptions import I18nError
 
 app = typer.Typer(help="i18n translation automation commands.")
 console = Console()
@@ -40,126 +36,42 @@ def translate(
     prune: bool = typer.Option(
         False, "--prune", help="Remove orphan keys from target files."
     ),
+    provider: str | None = typer.Option(
+        None, "--provider", "-p", help="Override the LLM provider for this invocation."
+    ),
 ):
     """Translate missing keys using AI."""
-    try:
-        config = InlangConfig.from_json(settings_path)
-        paths = resolve_paths(settings_path, config)
-        translations = load_all_translations(paths)
+    project = load_project(settings_path)
+    outcomes = asyncio.run(
+        translate_project(project, full=full, prune=prune, provider=provider)
+    )
 
-        base_locale = config.base_locale
-        if base_locale not in translations:
+    for outcome in outcomes:
+        if outcome.error:
             console.print(
-                f"[red]Error: Base locale '{base_locale}' not found in translations.[/red]"
+                f"[red]Error translating {outcome.locale}: {outcome.error}[/]"
             )
-            raise typer.Exit(1)
-
-        base_set = translations[base_locale]
-        target_locales = [loc for loc in config.locales if loc != base_locale]
-
-        async def run_translations():
-            tasks = []
-            results = {}
-
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console,
-            ) as progress:
-                for locale in target_locales:
-                    target_set = translations[locale]
-                    diff = diff_against_base(base_set, target_set)
-
-                    keys_to_translate = diff.missing_keys
-                    if full:
-                        keys_to_translate = list(base_set.messages.keys())
-
-                    if not keys_to_translate:
-                        console.print(
-                            f"[yellow]Skipping {locale}: No keys to translate.[/yellow]"
-                        )
-                        continue
-
-                    values_to_translate = [
-                        base_set.messages[k] for k in keys_to_translate
-                    ]
-
-                    # Style samples (first 5 existing translations)
-                    samples = []
-                    existing_keys = [
-                        k for k in base_set.messages.keys() if k in target_set.messages
-                    ]
-                    for k in existing_keys[:5]:
-                        samples.append((base_set.messages[k], target_set.messages[k]))
-
-                    task_id = progress.add_task(
-                        description=f"Translating {locale} ({len(keys_to_translate)} keys)...",
-                        total=None,
-                    )
-
-                    async def do_translate(
-                        locale_=locale,
-                        k=keys_to_translate,
-                        v=values_to_translate,
-                        s=samples,
-                        t_id=task_id,
-                    ):
-                        try:
-                            res = await translate_locale(locale_, k, v, s)
-                            progress.update(
-                                t_id,
-                                completed=True,
-                                description=f"[green]Finished {locale_}[/green]",
-                            )
-                            return locale_, k, res
-                        except Exception as e:
-                            progress.update(
-                                t_id,
-                                completed=True,
-                                description=f"[red]Failed {locale_}[/red]",
-                            )
-                            return locale_, k, e
-
-                    tasks.append(do_translate())
-
-                if not tasks:
-                    console.print("[green]All translations up to date.[/green]")
-                    return
-
-                batch_results = await asyncio.gather(*tasks)
-                for locale, keys, result in batch_results:
-                    if isinstance(result, Exception):
-                        console.print(
-                            f"[red]Error translating {locale}: {str(result)}[/red]"
-                        )
-                    else:
-                        results[locale] = (keys, result)
-            return results
-
-        results = asyncio.run(run_translations())
-
-        if not results:
-            return
-
-        # Apply changes
-        for locale, (keys, values) in results.items():
-            target_set = translations[locale]
-            new_set = merge_translations(target_set, keys, values)
-
-            if prune:
-                new_set = prune_orphans(new_set, base_set)
-
-            if not dry_run:
-                write_translations(paths[locale], new_set)
-                console.print(f"[green]Updated {paths[locale]}[/green]")
-            else:
+        elif outcome.keys_touched == 0:
+            console.print(
+                f"[yellow]Skipping {outcome.locale}: No keys to translate.[/]"
+            )
+        else:
+            console.print(
+                f"[green]Translated {outcome.locale}: {outcome.keys_touched} key(s)[/]"
+            )
+            for warning in outcome.placeholder_warnings:
                 console.print(
-                    f"[yellow][DRY RUN] Would update {paths[locale]}[/yellow]"
+                    f"  [yellow]⚠ {warning.key}: expected {warning.expected}, "
+                    f"got {warning.actual}[/]"
                 )
 
-    except I18nError as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        raise typer.Exit(1)
+    if dry_run:
+        console.print("[yellow]--dry-run: skipping write.[/]")
+        return
+
+    written = apply_translations(project, outcomes, prune=prune)
+    for path in written:
+        console.print(f"[green]Updated {path}[/]")
 
 
 @app.command()
@@ -169,46 +81,32 @@ def audit(
     ),
 ):
     """Display a translation coverage matrix."""
-    try:
-        config = InlangConfig.from_json(settings_path)
-        paths = resolve_paths(settings_path, config)
-        translations = load_all_translations(paths)
+    project = load_project(settings_path)
+    matrix, totals = audit_project(project)
 
-        locales = config.locales
-        matrix = build_matrix(translations, locales)
+    table = Table(title="i18n Translation Audit")
+    table.add_column("Key", style="cyan", no_wrap=True)
+    for locale in project.config.locales:
+        table.add_column(locale, justify="center")
 
-        table = Table(title="i18n Translation Audit")
-        table.add_column("Key", style="cyan", no_wrap=True)
-        for locale in locales:
-            table.add_column(locale, justify="center")
+    for key in matrix.keys:
+        row = [key]
+        for locale in project.config.locales:
+            val = matrix.matrix[key][locale]
+            row.append("[green]✓[/green]" if val else "[red]✗[/red]")
+        table.add_row(*row)
 
-        for key in matrix.keys:
-            row = [key]
-            for locale in locales:
-                val = matrix.matrix[key][locale]
-                if val:
-                    row.append("[green]✓[/green]")
-                else:
-                    row.append("[red]✗[/red]")
-            table.add_row(*row)
+    row = ["TOTAL"]
+    for coverage in totals:
+        percent = (coverage.translated / coverage.total) * 100 if coverage.total else 0
+        color = "green" if percent == 100 else "yellow" if percent > 80 else "red"
+        row.append(
+            f"[{color}]{coverage.translated}/{coverage.total} ({percent:.0f}%)[/]"
+        )
+    table.add_section()
+    table.add_row(*row)
 
-        # Totals row
-        totals = ["TOTAL"]
-        for locale in locales:
-            count = sum(1 for k in matrix.keys if matrix.matrix[k][locale])
-            percent = (count / len(matrix.keys)) * 100 if matrix.keys else 0
-            color = "green" if percent == 100 else "yellow" if percent > 80 else "red"
-            totals.append(
-                f"[{color}]{count}/{len(matrix.keys)} ({percent:.0f}%)[/{color}]"
-            )
-        table.add_section()
-        table.add_row(*totals)
-
-        console.print(table)
-
-    except I18nError as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        raise typer.Exit(1)
+    console.print(table)
 
 
 @app.command()
@@ -222,18 +120,10 @@ def export(
     fmt: str = typer.Option("json", "--format", "-f", help="Export format (json, py)."),
 ):
     """Export all translations to a master registry file."""
-    try:
-        config = InlangConfig.from_json(settings_path)
-        paths = resolve_paths(settings_path, config)
-        translations = load_all_translations(paths)
-
-        matrix = build_matrix(translations, config.locales)
-        export_registry(matrix, output, fmt)
-        console.print(f"[green]Exported registry to {output}[/green]")
-
-    except I18nError as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        raise typer.Exit(1)
+    project = load_project(settings_path)
+    matrix, _ = audit_project(project)
+    export_registry(matrix, output, fmt)
+    console.print(f"[green]Exported registry to {output}[/green]")
 
 
 @app.command()
@@ -244,29 +134,24 @@ def sync(
     ),
 ):
     """Sync a registry file back to individual locale files."""
-    try:
-        matrix = import_registry(registry_path)
-        config = InlangConfig.from_json(settings_path)
-        paths = resolve_paths(settings_path, config)
+    matrix = import_registry(registry_path)
+    config = InlangConfig.from_json(settings_path)
+    paths = resolve_paths(settings_path, config)
 
-        for locale in matrix.locales:
-            if locale not in paths:
-                console.print(
-                    f"[yellow]Warning: Locale '{locale}' in registry not found in config. Skipping.[/yellow]"
-                )
-                continue
-
-            messages = {}
-            for key in matrix.keys:
-                val = matrix.matrix[key].get(locale)
-                if val:
-                    messages[key] = val
-
-            write_translations(
-                paths[locale], TranslationSet(locale=locale, messages=messages)
+    for locale in matrix.locales:
+        if locale not in paths:
+            console.print(
+                f"[yellow]Warning: Locale '{locale}' in registry not found in config. Skipping.[/yellow]"
             )
-            console.print(f"[green]Synced {paths[locale]}[/green]")
+            continue
 
-    except I18nError as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        raise typer.Exit(1)
+        messages = {}
+        for key in matrix.keys:
+            val = matrix.matrix[key].get(locale)
+            if val:
+                messages[key] = val
+
+        write_translations(
+            paths[locale], TranslationSet(locale=locale, messages=messages)
+        )
+        console.print(f"[green]Synced {paths[locale]}[/green]")

@@ -1,74 +1,110 @@
+"""azathoth.core.directives — Composite loader for coding-philosophy directives.
+
+A master context is composed from the universal core directive plus zero or
+more language directives, each rendered to Markdown and concatenated.
+
+Format (Phase 6, per §3.7/§5.10 of plan3.md): a directive is a folder —
+structured ``meta.toml`` (name, version, applies-to, rules) plus prose
+``philosophy.md`` and an optional ``examples.md``. Rules are key-value data
+and belong in TOML; philosophy is prose with code fences and belongs in
+Markdown. There is no dual-format reader and no migration path — the format
+is a cutover, not a compatibility layer.
+"""
+
 import tomllib
 from pathlib import Path
-from typing import Dict, List, Optional
+
 from pydantic import BaseModel
+
 from azathoth.config import get_config
+from azathoth.core.exceptions import DirectiveError
 
-config = get_config()
+_BUILTIN_DIRECTIVES_DIR = Path(__file__).parent.parent / "directives"
 
 
-class DirectiveMeta(BaseModel):
+class DirectiveMeta(BaseModel, frozen=True):
     name: str
     version: str
-    applies_to: List[str]
+    applies_to: list[str]
 
 
-class Directive(BaseModel):
+class Directive(BaseModel, frozen=True):
     meta: DirectiveMeta
-    rules: Dict[str, str]
-    examples: Optional[Dict[str, List[str]]] = None
+    rules: dict[str, str]
+    philosophy: str
+    examples: str | None = None
 
     def render(self) -> str:
         """Renders the directive as a markdown string for the LLM."""
         lines = [f"# Directive: {self.meta.name} (v{self.meta.version})", ""]
 
-        lines.append("## Rules")
-        for key, value in self.rules.items():
-            lines.append(f"- **{key}**: {value}")
-        lines.append("")
+        if self.rules:
+            lines.append("## Rules")
+            for key, value in self.rules.items():
+                lines.append(f"- **{key}**: {value}")
+            lines.append("")
+
+        lines.append("## Philosophy")
+        lines.append(self.philosophy.strip())
 
         if self.examples:
+            lines.append("")
             lines.append("## Examples")
-            for lang, ex_list in self.examples.items():
-                lines.append(f"### {lang}")
-                for ex in ex_list:
-                    lines.append(ex)
-                    lines.append("")
+            lines.append(self.examples.strip())
 
         return "\n".join(lines)
 
 
-async def load_directive(name: str) -> Optional[Directive]:
-    """
-    Loads a directive by name, searching built-ins first then user overrides.
-    """
-    # 1. Check user overrides first (as per guide, user wins)
-    user_path = config.directives_dir / f"{name}.toml"
+def _load_directive_folder(folder: Path) -> Directive:
+    """Load a directive from *folder*. Raises DirectiveError if malformed."""
+    meta_path = folder / "meta.toml"
+    philosophy_path = folder / "philosophy.md"
 
-    # 2. Check built-ins (we'll look in a relative 'directives/' folder in the package)
-    builtin_path = Path(__file__).parent.parent / "directives" / f"{name}.toml"
+    if not meta_path.is_file():
+        raise DirectiveError(f"Directive folder '{folder}' is missing meta.toml")
+    if not philosophy_path.is_file():
+        raise DirectiveError(f"Directive folder '{folder}' is missing philosophy.md")
 
-    target_path = None
-    if user_path.exists():
-        target_path = user_path
-    elif builtin_path.exists():
-        target_path = builtin_path
-
-    if not target_path:
-        return None
-
-    with open(target_path, "rb") as f:
+    with open(meta_path, "rb") as f:
         data = tomllib.load(f)
-        return Directive(**data)
+
+    if "meta" not in data:
+        raise DirectiveError(f"'{meta_path}' is missing the [meta] table")
+
+    examples_path = folder / "examples.md"
+    examples = (
+        examples_path.read_text(encoding="utf-8") if examples_path.is_file() else None
+    )
+
+    return Directive(
+        meta=DirectiveMeta(**data["meta"]),
+        rules=data.get("rules", {}),
+        philosophy=philosophy_path.read_text(encoding="utf-8"),
+        examples=examples,
+    )
 
 
-async def get_master_context(languages: List[str]) -> str:
+async def load_directive(name: str) -> Directive | None:
+    """Load a directive by name, searching user overrides first, then built-ins.
+
+    Returns None only when no folder for *name* exists anywhere — a folder
+    that exists but is missing required files raises DirectiveError rather
+    than silently returning an empty directive.
     """
-    Combines core philosophy with language-specific directives.
-    """
+    user_dir = get_config().directives_dir / name
+    builtin_dir = _BUILTIN_DIRECTIVES_DIR / name
+
+    if user_dir.is_dir():
+        return _load_directive_folder(user_dir)
+    if builtin_dir.is_dir():
+        return _load_directive_folder(builtin_dir)
+    return None
+
+
+async def get_master_context(languages: list[str]) -> str:
+    """Combines core philosophy with language-specific directives."""
     directives = []
 
-    # Always load core philosophy
     core = await load_directive("core")
     if core:
         directives.append(core.render())

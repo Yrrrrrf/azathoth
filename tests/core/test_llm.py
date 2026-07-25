@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from azathoth.core.llm import LLMError, generate, generate_with_tools
 from azathoth.providers.base import (
@@ -13,7 +14,6 @@ from azathoth.providers.base import (
     ProviderUnavailable,
     ToolSpec,
 )
-
 
 # ── Helpers / fixtures ────────────────────────────────────────────────────────
 

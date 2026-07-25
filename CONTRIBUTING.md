@@ -54,14 +54,20 @@ uv run azathoth-architecture-check --json   # machine-readable JSON report
 uv run python -m azathoth.dev.architecture_check
 ```
 
-Parses every `.py` file under `src/azathoth/` with `ast` and enforces three
-architectural rules:
+Parses every `.py` file under `src/azathoth/` with `ast` and enforces eight
+architectural rules plus one performance budget:
 
-| Rule                         | What it checks                                                                                                                                                                                                                                      |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **R1: SDK isolation**        | Only `providers/gemini.py` may import from the `google.*` / `genai.*` namespace. Any other module doing so is a violation.                                                                                                                          |
-| **R2: Façade boundary**      | `core/llm.py` must contain zero SDK imports at any scope level. Additionally, no file outside `providers/` may do a module-level direct import of a concrete provider implementation (`azathoth.providers.gemini`, `azathoth.providers.ollama`, …). |
-| **R3: Provider conformance** | Every non-framework file in `providers/` must self-register and produce an instance that satisfies `isinstance(instance, Provider)`.                                                                                                                |
+| Rule                                | What it checks                                                                                                                                                                                                                                      |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **R1: SDK isolation**                | Only `providers/gemini.py` may import from the `google.*` / `genai.*` namespace. Any other module doing so is a violation.                                                                                                                          |
+| **R2: Façade boundary**              | `core/llm.py` must contain zero SDK imports at any scope level. Additionally, no file outside `providers/` may do a module-level direct import of a concrete provider implementation (`azathoth.providers.gemini`, `azathoth.providers.ollama`, …). |
+| **R3: Provider conformance**         | Every non-framework file in `providers/` must self-register and produce an instance that satisfies `isinstance(instance, Provider)`.                                                                                                                |
+| **R4: No bare config import**        | No `from azathoth.config import config`, and no module-level `get_config()` call — config must be read lazily, inside a function body.                                                                                                              |
+| **R5: Presentation purity**          | `cli/**` and `mcp/**` may not import `core.llm`, `providers.*`, or any underscore-prefixed name from `core`.                                                                                                                                        |
+| **R6: No cross-package privates**    | An underscore-prefixed name may not be imported across a top-level package boundary (`cli` / `mcp` / `core` / `providers`). `dev/` is exempt — it reads all layers by design.                                                                       |
+| **R7: Layer direction**              | `core/**` may not import `cli/**` or `mcp/**`; `providers/**` may not import `core/**`.                                                                                                                                                              |
+| **R8: No `__future__` annotations**  | PEP 649 (Python 3.14) makes the import a no-op — it's dead weight, not a requirement.                                                                                                                                                                |
+| **B1: Cold-import budget**           | `import azathoth` in a fresh subprocess must complete in under 800ms.                                                                                                                                                                                |
 
 **Why these rules matter:**
 
@@ -71,8 +77,17 @@ architectural rules:
 - **R2** is the "seam" rule: consumer code that calls `generate()` must never
   know _which_ backend handled the request. The façade is the only door.
 - **R3** ensures new provider additions don't silently break the plugin
-  contract. The registry's own `register()` enforces this at import time, but
-  the arch check re-verifies it statically as a double safety net.
+  contract. The registry's own `register()` defers this check to first
+  resolution (never at import time — a missing API key must not crash
+  `import azathoth`); the arch check re-verifies it statically as a double
+  safety net.
+- **R4** prevents config from binding at import time, which would make it
+  unpatchable in tests.
+- **R5**/**R6**/**R7** together keep the four-layer diagram executable: CLI
+  and MCP stay peer renderers, `core/` stays the only place behaviour is
+  defined, and nothing reaches past the boundary it's supposed to respect.
+- **R8** and **B1** are the Python 3.14 payoff — dead boilerplate deleted,
+  cold-start speed enforced instead of left to creep.
 
 **Self-test** — the check must catch deliberate violations:
 
@@ -102,31 +117,32 @@ cli/*  mcp/*
           providers/<name>.py  ← only imports from providers.base
 ```
 
-Rules enforced by `azathoth-architecture-check` (R1–R3 above) and by
+Rules enforced by `azathoth-architecture-check` (R1–R8, B1 above) and by
 `azathoth-import-check` (full namespace traversal).
 
 Adding a new provider (`providers/foo.py`) is the only architectural change that
-should be routine after Phase 7. The template is `providers/ollama.py`:
+should be routine. The template is `providers/ollama.py`:
 
-1. Implement the `Provider` Protocol (no inheritance required).
-2. Call `_register("foo", _factory)` at module bottom.
+1. Implement the `Provider` Protocol (no inheritance required — structural
+   typing is the point).
+2. Call `register("foo", _factory)` at module bottom.
 3. Add `import azathoth.providers.foo` inside `core/llm._load_providers()`.
 4. Add `FooSettings` fields to `config.py` (prefixed `foo_*`).
 5. Run `azathoth-architecture-check` — must pass with 0 violations.
 
 ## Code standards (non-negotiable)
 
-| Rule                                                                        | Rationale                                                      |
-| --------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `from __future__ import annotations` at the top of every `.py`              | Consistent forward-ref behaviour across Python 3.11–3.13       |
-| Full type hints on every public function                                    | `pyright` checks these in CI                                   |
-| `ty check src/` in strict mode                                              | Providers and the LLM façade are the highest-risk surface      |
-| `ruff` rulesets `E, F, I, B, RUF, UP, PLR, SIM, ASYNC, FBT, RET`            | Errors, not warnings                                           |
-| No `print()` in `src/`                                                      | Use `logging.getLogger(__name__)`                              |
-| No bare `except:` or `except Exception:` without re-raise or structured log | Silent failures are defects                                    |
-| Pydantic models `frozen=True` by default                                    | Mutability must be justified in a docstring                    |
-| `pytest --strict-markers --strict-config`                                   | Undeclared markers fail collection                             |
-| ≥ 85 % line coverage for `providers/` and `core/llm.py`, `core/tools.py`    | Enforced by `pytest-cov --fail-under=85` scoped to those paths |
+| Rule                                                                        | Rationale                                                                 |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `from __future__ import annotations` is **banned** in `src/`                | PEP 649 (3.14) makes it a no-op — R8 enforces this                        |
+| Full type hints on every public function                                   | `ty check` checks these in CI                                             |
+| `ty check` clean under `src/`                                              | Providers and the LLM façade are the highest-risk surface                 |
+| `ruff` rulesets `E, F, I, B, RUF, UP, PLR, SIM, ASYNC, FBT, RET`            | Errors, not warnings                                                      |
+| No `print()` in `src/`                                                     | Use `logging.getLogger(__name__)` — `dev/` CLI entry points are exempt    |
+| No bare `except:` or `except Exception:` without re-raise or structured log | Silent failures are defects                                              |
+| Pydantic models `frozen=True` by default                                   | Mutability must be justified in a docstring                               |
+| `pytest --strict-markers --strict-config`                                  | Undeclared markers fail collection                                        |
+| ≥ 85 % line coverage for `providers/` and `core/llm.py`, `core/tools.py`   | Enforced by `pytest-cov --fail-under=85` scoped to those paths            |
 
 ---
 
@@ -154,4 +170,3 @@ should be routine after Phase 7. The template is `providers/ollama.py`:
 - Streaming LLM responses
 - Multi-modal inputs (image/audio)
 - LLM response caching / cost tracking beyond `tiktoken`
-- The `scout()` MCP integration

@@ -11,22 +11,20 @@ Usage
   uv run python -m azathoth.dev.import_check
 """
 
-from __future__ import annotations
-
 import importlib
-import json
 import pkgutil
-import sys
 import time
 import traceback
 from typing import Any
+
+from azathoth.dev._cli import run_cli
 
 
 def _collect_modules(root_package: str) -> list[str]:
     """Return fully-qualified names of every submodule under *root_package*."""
     try:
         root = importlib.import_module(root_package)
-    except (ImportError, SyntaxError):
+    except ImportError, SyntaxError:
         # The root itself is broken — report immediately.
         return []
 
@@ -85,16 +83,8 @@ def _print_human(result: dict[str, Any]) -> None:
 
 def main() -> None:
     """Entry point for the ``azathoth-import-check`` CLI script."""
-    json_mode = "--json" in sys.argv
     result = run_check()
-
-    if json_mode:
-        json.dump(result, sys.stdout, indent=2)
-        sys.stdout.write("\n")
-    else:
-        _print_human(result)
-
-    sys.exit(1 if result["errors"] else 0)
+    run_cli(result, ok=not result["errors"], human=_print_human)
 
 
 if __name__ == "__main__":

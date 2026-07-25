@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
+
 import pytest
 from pydantic import BaseModel
-from typing import Optional
 
 from azathoth.core.tools import (
     build_emulator_system_prompt,
@@ -15,7 +15,6 @@ from azathoth.core.tools import (
     tool_spec_from_pydantic,
 )
 from azathoth.providers.base import ToolCall, ToolSpec
-
 
 # ── tool_spec_from_pydantic ───────────────────────────────────────────────────
 
@@ -31,7 +30,7 @@ class SearchArgs(BaseModel):
     """Search the web."""
 
     query: str
-    max_results: Optional[int] = 10
+    max_results: int | None = 10
 
 
 def test_tool_spec_from_pydantic_basic():

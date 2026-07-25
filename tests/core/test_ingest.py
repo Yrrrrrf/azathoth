@@ -1,4 +1,5 @@
 import pytest
+
 from azathoth.core.ingest import ingest
 
 

@@ -4,11 +4,16 @@ Provider selection (Phase 3+):
   - ``Settings.llm_provider``   single-provider override (takes precedence)
   - ``Settings.llm_providers``  ordered fallback chain — accepted as JSON list
                                  OR comma-separated string from env var
-  - ``Settings.llm_total_timeout``  wall-clock budget enforced by resolver
+  - ``Settings.llm_chain_timeout`` / ``llm_per_provider_timeout``  wall-clock
+                                 budgets enforced by the resolver
   - ``Settings.ollama_*``       Ollama daemon config (Phase 4)
-"""
 
-from __future__ import annotations
+``check_preview_model`` is a startup check, not a field validator — see
+§5.9 of plan3.md. A validator on the module-scope ``config`` singleton would
+fire on every ``import azathoth`` (including test collection and every MCP
+server start). The right event is "someone is about to run something", so
+each entry point (CLI root callback, every MCP ``run()``) calls it once.
+"""
 
 import json
 import os
@@ -16,7 +21,7 @@ import warnings
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic import Field, SecretStr
 from pydantic_settings import (
     BaseSettings,
     EnvSettingsSource,
@@ -27,8 +32,6 @@ from pydantic_settings import (
 
 _CONFIG_DIR = Path.home() / ".config" / "azathoth"
 _CONFIG_FILE = _CONFIG_DIR / "config.toml"
-
-_PREVIEW_TAGS = ("preview", "experimental", "exp")
 
 # Fields whose env-var values need pre-processing before pydantic-settings'
 # decode_complex_value (json.loads) runs.
@@ -104,12 +107,9 @@ class Settings(BaseSettings):
     #: Wall-clock budget per single provider in the chain.
     llm_per_provider_timeout: float = Field(default=30.0)
 
-    #: Deprecated alias for llm_chain_timeout
-    llm_total_timeout: float | None = Field(default=None)
-
     # ── Gemini ────────────────────────────────────────────────────────────
     gemini_api_key: SecretStr = Field(default_factory=_resolve_api_key)
-    gemini_model: str = "gemini-3.1-flash-lite-preview"
+    gemini_model: str = "gemini-3.6-flash"
 
     # ── Ollama (Phase 4) ──────────────────────────────────────────────────
     ollama_host: str = Field(default="http://localhost:11434")
@@ -133,33 +133,6 @@ class Settings(BaseSettings):
         env_prefix="AZATHOTH_",
         extra="ignore",
     )
-
-    # @field_validator("gemini_model")
-    # @classmethod
-    # def warn_on_preview_model(cls, v: str) -> str:
-    #     """Emit a UserWarning when the configured model name looks like a preview tag."""
-    #     if any(tag in v.lower() for tag in _PREVIEW_TAGS):
-    #         warnings.warn(
-    #             f"Configured Gemini model '{v}' contains a preview/experimental tag. "
-    #             "Preview models may be deprecated or removed without notice. "
-    #             "Consider pinning a stable model identifier.",
-    #             UserWarning,
-    #             stacklevel=2,
-    #         )
-    #     return v
-
-    @model_validator(mode="before")
-    @classmethod
-    def warn_on_llm_total_timeout(cls, data: Any) -> Any:
-        if isinstance(data, dict) and "llm_total_timeout" in data:
-            warnings.warn(
-                "AZATHOTH_LLM_TOTAL_TIMEOUT is deprecated; use AZATHOTH_LLM_CHAIN_TIMEOUT and AZATHOTH_LLM_PER_PROVIDER_TIMEOUT.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            if "llm_chain_timeout" not in data:
-                data["llm_chain_timeout"] = data["llm_total_timeout"]
-        return data
 
     @classmethod
     def settings_customise_sources(
@@ -185,18 +158,43 @@ class Settings(BaseSettings):
 
     @property
     def directives_dir(self) -> Path:
-        path = self.config_dir / "directives"
-        path.mkdir(parents=True, exist_ok=True)
-        return path
+        """User directive override directory. Does NOT create it on access —
+        a property that mutates the filesystem on read is a trap. Directory
+        creation is an explicit step; see ``ensure_dirs``."""
+        return self.config_dir / "directives"
 
     @property
     def reports_dir(self) -> Path:
         return self.default_output_dir
 
+    def ensure_dirs(self) -> None:
+        """Create every directory this config points at. Call once at
+        startup, not on every property read."""
+        self.directives_dir.mkdir(parents=True, exist_ok=True)
+        self.reports_dir.mkdir(parents=True, exist_ok=True)
+
 
 # Singleton
 config = Settings()
 
+_PREVIEW_TAGS = ("preview", "experimental", "exp")
+
 
 def get_config() -> Settings:
     return config
+
+
+def check_preview_model(settings: Settings | None = None) -> None:
+    """Emit a UserWarning if the configured Gemini model looks like a preview
+    tag. Called once per invocation from each entry point (CLI root callback,
+    every MCP ``run()``) — never at import time. See §5.9 of plan3.md."""
+    settings = settings or get_config()
+    model = settings.gemini_model.lower()
+    if any(tag in model for tag in _PREVIEW_TAGS):
+        warnings.warn(
+            f"Configured Gemini model '{settings.gemini_model}' contains a "
+            "preview/experimental tag. Preview models may be deprecated or "
+            "removed without notice. Consider pinning a stable model identifier.",
+            UserWarning,
+            stacklevel=2,
+        )

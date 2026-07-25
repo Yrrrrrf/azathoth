@@ -1,5 +1,5 @@
 {
-  description = "Development environment for MCP for Rust and Python (via uv)";
+  description = "Development environment for Azathoth (Python 3.14 via uv)";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -11,13 +11,12 @@
   in {
     devShells.${system}.default = pkgs.mkShell {
       packages = [
-        pkgs.cargo
+        pkgs.python314
         pkgs.uv
       ];
       shellHook = ''
-        echo "Welcome to the MCP development environment!"
-        echo "You can run 'cargo build' to build the Rust project."
-        echo "You can run 'uv' to use the uv tool."
+        echo "Welcome to the Azathoth development environment!"
+        echo "You can run 'uv' to manage the Python 3.14 toolchain."
       '';
     };
   };

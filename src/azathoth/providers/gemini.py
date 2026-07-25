@@ -7,8 +7,6 @@ imports ``google.genai`` directly.
 Tool call translation (Phase 5) is implemented here for native support.
 """
 
-from __future__ import annotations
-
 import logging
 from typing import Any, NoReturn
 
@@ -24,6 +22,7 @@ from azathoth.providers.base import (
     ToolCall,
     ToolSpec,
 )
+from azathoth.providers.registry import register
 
 log = logging.getLogger(__name__)
 
@@ -54,7 +53,7 @@ def _tool_spec_to_gemini(spec: ToolSpec) -> types.FunctionDeclaration:
     return types.FunctionDeclaration(
         name=spec.name,
         description=spec.description,
-        parameters=spec.parameters_schema or None,  # ty: ignore[invalid-argument-type]
+        parameters=spec.parameters_schema or None,
     )
 
 
@@ -77,7 +76,7 @@ def _parse_tool_calls(response: Any) -> list[ToolCall]:
                         call_id=None,
                     )
                 )
-    except (AttributeError, IndexError, TypeError):
+    except AttributeError, IndexError, TypeError:
         pass
     return tool_calls
 
@@ -177,6 +176,4 @@ def _factory() -> GeminiProvider:
 
 
 # Self-registration at import time
-from azathoth.providers.registry import register as _register  # noqa: E402
-
-_register("gemini", _factory)
+register("gemini", _factory)

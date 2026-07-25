@@ -14,14 +14,10 @@ NO provider implementation code lives here.
 NO SDK imports live here.
 """
 
-from __future__ import annotations
-
+from collections.abc import Sequence
 from typing import Any, Protocol, runtime_checkable
 
-from collections.abc import Sequence
-
 from pydantic import BaseModel, Field
-
 
 # ── Transport models ──────────────────────────────────────────────────────────
 
@@ -178,14 +174,30 @@ class ProviderSchemaError(ProviderError):
     """
 
 
-class AllProvidersFailedError(ProviderError):
+class AllProvidersFailedError(ProviderError, ExceptionGroup):
     """Raised by the resolver when every provider in the chain has been tried.
 
-    The ``causes`` attribute holds the list of underlying exceptions in the
-    order they were encountered.
+    A real ``ExceptionGroup``: every failed provider keeps its own full
+    traceback, callers can filter selectively with ``except*``, and the
+    interpreter renders the whole tree natively — rather than the causes
+    being flattened into inert data on a hand-rolled ``.causes`` list.
+    ``causes`` is kept as a read-only alias for ``.exceptions`` so existing
+    call sites reading it by name keep working.
     """
 
-    def __init__(self, causes: Sequence[Exception]) -> None:
-        self.causes: Sequence[Exception] = causes
+    def __new__(cls, causes: Sequence[Exception]) -> AllProvidersFailedError:
         summary = "; ".join(f"{type(e).__name__}: {e}" for e in causes)
-        super().__init__(f"All providers failed: {summary}")
+        return super().__new__(cls, f"All providers failed: {summary}", list(causes))
+
+    def __init__(self, causes: Sequence[Exception]) -> None:
+        # __new__ already built the full (message, exceptions) pair for the
+        # ExceptionGroup base — __init__ intentionally takes just `causes` to
+        # match the public constructor signature call sites use.
+        pass
+
+    def derive(self, excs: Sequence[Exception]) -> AllProvidersFailedError:
+        return AllProvidersFailedError(excs)
+
+    @property
+    def causes(self) -> tuple[Exception, ...]:
+        return self.exceptions

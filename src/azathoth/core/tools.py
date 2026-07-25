@@ -13,11 +13,10 @@ This module makes NO network calls and knows nothing about provider internals.
 The emulator path is orchestrated by ``core/llm.py``, not here.
 """
 
-from __future__ import annotations
-
 import json
 import logging
-from typing import Any, Callable, Mapping
+from collections.abc import Callable, Mapping
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -26,12 +25,12 @@ from azathoth.providers.base import ToolCall, ToolSpec
 log = logging.getLogger(__name__)
 
 __all__ = [
-    "ToolSpec",
     "ToolCall",
-    "tool_spec_from_pydantic",
-    "render_tools_as_json_spec",
-    "parse_tool_calls_from_json",
+    "ToolSpec",
     "dispatch",
+    "parse_tool_calls_from_json",
+    "render_tools_as_json_spec",
+    "tool_spec_from_pydantic",
 ]
 
 # ── Schema helpers ────────────────────────────────────────────────────────────
