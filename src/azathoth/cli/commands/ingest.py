@@ -289,6 +289,7 @@ def main(
         bool,
         typer.Option(
             "--no-git-ignore",
+            "-g",
             help="Ignore .gitignore patterns and ingest everything",
         ),
     ] = False,
