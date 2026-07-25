@@ -29,21 +29,17 @@ from azathoth.providers.base import (
 from azathoth.providers.registry import get_provider, list_providers, register
 
 __all__ = [
-    # Protocol
-    "Provider",
-    # Transport models
-    "ToolSpec",
-    "ToolCall",
+    "AllProvidersFailedError",
     "LLMResponse",
-    # Exceptions
-    "ProviderError",
-    "ProviderUnavailable",
+    "Provider",
     "ProviderAuthError",
+    "ProviderError",
     "ProviderRateLimitError",
     "ProviderSchemaError",
-    "AllProvidersFailedError",
-    # Registry
-    "register",
+    "ProviderUnavailable",
+    "ToolCall",
+    "ToolSpec",
     "get_provider",
     "list_providers",
+    "register",
 ]

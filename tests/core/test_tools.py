@@ -1,7 +1,5 @@
 """tests/core/test_tools.py — Universal tool-calling layer unit tests (Phase 5)."""
 
-from __future__ import annotations
-
 import json
 
 import pytest

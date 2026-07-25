@@ -1,7 +1,5 @@
 """tests/providers/test_ollama.py — OllamaProvider unit tests (mocked httpx)."""
 
-from __future__ import annotations
-
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -140,9 +138,11 @@ async def test_timeout_maps_to_unavailable(provider):
 
     ctx = _mock_client_ctx(None)
     ctx.__aenter__.return_value.post.side_effect = httpx.TimeoutException("timed out")
-    with patch("azathoth.providers.ollama.httpx.AsyncClient", return_value=ctx):
-        with pytest.raises(ProviderUnavailable, match="timed out"):
-            await provider.generate("sys", "user")
+    with (
+        patch("azathoth.providers.ollama.httpx.AsyncClient", return_value=ctx),
+        pytest.raises(ProviderUnavailable, match="timed out"),
+    ):
+        await provider.generate("sys", "user")
 
 
 @pytest.mark.asyncio
@@ -151,9 +151,11 @@ async def test_connect_error_maps_to_unavailable(provider):
 
     ctx = _mock_client_ctx(None)
     ctx.__aenter__.return_value.post.side_effect = httpx.ConnectError("refused")
-    with patch("azathoth.providers.ollama.httpx.AsyncClient", return_value=ctx):
-        with pytest.raises(ProviderUnavailable, match="not reachable"):
-            await provider.generate("sys", "user")
+    with (
+        patch("azathoth.providers.ollama.httpx.AsyncClient", return_value=ctx),
+        pytest.raises(ProviderUnavailable, match="not reachable"),
+    ):
+        await provider.generate("sys", "user")
 
 
 # ── tool calls ────────────────────────────────────────────────────────────────

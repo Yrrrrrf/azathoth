@@ -1,9 +1,10 @@
 import asyncio
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
+import httpx
 import typer
 from rich import box
 from rich.console import Console, RenderableType
@@ -123,7 +124,11 @@ def list_reports():
 
     for r in reports:
         size = format_size(r.stat().st_size)
-        mtime = datetime.fromtimestamp(r.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+        mtime = (
+            datetime.fromtimestamp(r.stat().st_mtime, tz=UTC)
+            .astimezone()
+            .strftime("%Y-%m-%d %H:%M")
+        )
         table.add_row(r.name, mtime, size)
 
     console.print(table)
@@ -165,14 +170,14 @@ async def _ingest_single(
             result = await ingest(
                 target, list_only=list_only, ignore_gitignore=ignore_gitignore
             )
-        except Exception as e:
+        except (OSError, httpx.HTTPError) as e:
             console.print(f"[bold red]✗ Ingestion failed:[/] {e}")
             raise typer.Exit(1)
 
     # Determine save path
     save_path = None
     if save or output:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
         list_tag = "-list" if list_only else ""
         filename = f"{result.suggested_filename}{list_tag}-{timestamp}.{fmt}"
         save_path = output or (get_config().reports_dir / filename)
@@ -204,7 +209,7 @@ async def _ingest_user(
 
     try:
         repos = await fetch_user_repos(username)
-    except Exception as e:
+    except (httpx.HTTPError, OSError) as e:
         console.print(f"[bold red]✗ Error fetching repos for {username}:[/] {e}")
         return
 
@@ -238,7 +243,9 @@ async def _ingest_user(
                         repo["clone_url"], ignore_gitignore=ignore_gitignore
                     )
                     if separate:
-                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        timestamp = (
+                            datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
+                        )
                         path = (
                             output_dir / f"{res.suggested_filename}-{timestamp}.{fmt}"
                         )
@@ -248,7 +255,7 @@ async def _ingest_user(
                             f"\n\n{'=' * 40}\nREPO: {res.suggested_filename}\n{'=' * 40}\n{res.content}"
                         )
                     progress.update(main_task, advance=1)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 — logs structured error per repo without failing batch ingest
                     log.warning(
                         "Repo ingest failed repo=%s error_class=%s message=%.200s",
                         repo.get("clone_url", "?"),
@@ -262,7 +269,7 @@ async def _ingest_user(
                 tg.create_task(_work(repo))
 
     if not separate and full_content:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
         save_path = output_dir / f"{username}-profile-{timestamp}.{fmt}"
         save_path.write_text("\n".join(full_content), encoding="utf-8")
         console.print(
@@ -272,29 +279,35 @@ async def _ingest_user(
 
 def main(
     ctx: typer.Context,
-    target: str | None = typer.Argument(None, help="Path, GitHub URL, or Username"),
-    list_only: bool = typer.Option(
-        False, "--list", "-l", help="Structure only, no file content"
-    ),
-    ignore_gitignore: bool = typer.Option(
-        False,
-        "--no-git-ignore",
-        help="Ignore .gitignore patterns and ingest everything",
-    ),
-    save: bool = typer.Option(True, "--save/--no-save", help="Save report to file"),
-    output: Path | None = typer.Option(
-        None, "--output", "-o", help="Custom output path"
-    ),
-    format: str = typer.Option("txt", "--format", "-f", help="txt, md, xml"),
-    clipboard: bool = typer.Option(
-        False, "--clipboard", "-c", help="Copy to clipboard"
-    ),
-    separate: bool = typer.Option(
-        False, "--separate", "-s", help="Split user repos into files"
-    ),
-    list_reports_flag: bool = typer.Option(
-        False, "--reports", help="List saved reports"
-    ),
+    target: Annotated[
+        str | None, typer.Argument(help="Path, GitHub URL, or Username")
+    ] = None,
+    list_only: Annotated[
+        bool, typer.Option("--list", "-l", help="Structure only, no file content")
+    ] = False,
+    ignore_gitignore: Annotated[
+        bool,
+        typer.Option(
+            "--no-git-ignore",
+            help="Ignore .gitignore patterns and ingest everything",
+        ),
+    ] = False,
+    save: Annotated[
+        bool, typer.Option("--save/--no-save", help="Save report to file")
+    ] = True,
+    output: Annotated[
+        Path | None, typer.Option("--output", "-o", help="Custom output path")
+    ] = None,
+    format: Annotated[str, typer.Option("--format", "-f", help="txt, md, xml")] = "txt",
+    clipboard: Annotated[
+        bool, typer.Option("--clipboard", "-c", help="Copy to clipboard")
+    ] = False,
+    separate: Annotated[
+        bool, typer.Option("--separate", "-s", help="Split user repos into files")
+    ] = False,
+    list_reports_flag: Annotated[
+        bool, typer.Option("--reports", help="List saved reports")
+    ] = False,
 ):
     """
     Ingest codebases into a single file.

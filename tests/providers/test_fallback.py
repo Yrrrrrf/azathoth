@@ -12,8 +12,6 @@ Exit criteria covered:
              (e) asyncio.TimeoutError counted as ProviderUnavailable (chain continues)
 """
 
-from __future__ import annotations
-
 import asyncio
 from unittest.mock import MagicMock
 
@@ -90,12 +88,12 @@ async def test_first_provider_success_short_circuits(monkeypatch):
 
     call_log: list[str] = []
 
-    class TrackP1(p1_cls):  # type: ignore[valid-type]
+    class TrackP1(p1_cls):
         async def generate(self, *args, **kw):
             call_log.append("p1")
             return await super().generate(*args, **kw)
 
-    class TrackP2(p2_cls):  # type: ignore[valid-type]
+    class TrackP2(p2_cls):
         async def generate(self, *args, **kw):
             call_log.append("p2")
             return await super().generate(*args, **kw)

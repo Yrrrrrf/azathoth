@@ -144,8 +144,11 @@ def _all_py_files() -> list[Path]:
 
 
 def _rel(path: Path) -> str:
-    """Return path relative to _SRC_ROOT as a forward-slash string."""
-    return path.relative_to(_SRC_ROOT).as_posix()
+    """Return path relative to _SRC_ROOT (or repo root) as a forward-slash string."""
+    try:
+        return path.relative_to(_SRC_ROOT).as_posix()
+    except ValueError:
+        return path.relative_to(_SRC_ROOT.parent.parent).as_posix()
 
 
 def _top_package(rel: str) -> str | None:
@@ -330,7 +333,7 @@ def _check_r3_provider_conformance() -> list[Violation]:
                 # API key missing at check time — structural conformance was already
                 # verified by registry.register() which calls isinstance() at registration.
                 pass
-            except Exception:
+            except Exception:  # noqa: BLE001, S110
                 # Other runtime errors are not architectural violations.
                 pass
 
@@ -515,9 +518,7 @@ def _check_r7_layer_direction(files: list[Path]) -> list[Violation]:
             else:
                 continue
 
-            if pkg == "core" and (
-                mod.startswith("azathoth.cli") or mod.startswith("azathoth.mcp")
-            ):
+            if pkg == "core" and mod.startswith(("azathoth.cli", "azathoth.mcp")):
                 violations.append(
                     Violation(
                         "R7:layer-direction",
@@ -622,7 +623,8 @@ def run_check() -> ArchCheckResult:
     all_violations.extend(_check_r5_presentation_purity(files))
     all_violations.extend(_check_r6_no_cross_package_privates(files))
     all_violations.extend(_check_r7_layer_direction(files))
-    all_violations.extend(_check_r8_no_future_annotations(files))
+    r8_files = sorted(files + list((_SRC_ROOT.parent.parent / "tests").rglob("*.py")))
+    all_violations.extend(_check_r8_no_future_annotations(r8_files))
 
     b1_violations, cold_import_ms = _check_b1_cold_import_budget()
     all_violations.extend(b1_violations)

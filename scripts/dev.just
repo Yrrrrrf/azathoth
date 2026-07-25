@@ -2,7 +2,7 @@
 [doc('Run the CLI')]
 [group('dev')]
 run *args:
-    uv run azathoth {{args}}
+    uv run azathoth {{ args }}
 
 [doc('Build dist files')]
 [group('dev')]
@@ -12,5 +12,5 @@ build:
 [doc('Remove build & cache artifacts')]
 [group('dev')]
 clean:
-    rm -rf dist .ruff_cache .pytest_cache
+    rm -rf .ruff_cache .pytest_cache
     @echo "✓ cleaned"

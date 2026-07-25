@@ -86,14 +86,13 @@ async def ingest(
 
     if target and target.is_file():
         return await _ingest_file(target)
-    else:
-        return await _ingest_directory(
-            path,
-            list_only=list_only,
-            include_patterns=include_patterns,
-            exclude_patterns=exclude_patterns,
-            ignore_gitignore=ignore_gitignore,
-        )
+    return await _ingest_directory(
+        path,
+        list_only=list_only,
+        include_patterns=include_patterns,
+        exclude_patterns=exclude_patterns,
+        ignore_gitignore=ignore_gitignore,
+    )
 
 
 async def _ingest_file(path: Path) -> IngestionResult:

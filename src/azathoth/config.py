@@ -109,7 +109,7 @@ class Settings(BaseSettings):
 
     # ── Gemini ────────────────────────────────────────────────────────────
     gemini_api_key: SecretStr = Field(default_factory=_resolve_api_key)
-    gemini_model: str = "gemini-3.6-flash"
+    gemini_model: str = "gemini-3.1-flash-lite"
 
     # ── Ollama (Phase 4) ──────────────────────────────────────────────────
     ollama_host: str = Field(default="http://localhost:11434")

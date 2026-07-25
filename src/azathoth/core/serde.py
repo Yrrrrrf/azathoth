@@ -16,7 +16,7 @@ def read_json(path: Path) -> Any:
         OSError:            If the file cannot be opened.
         json.JSONDecodeError: If the file is not valid JSON.
     """
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 

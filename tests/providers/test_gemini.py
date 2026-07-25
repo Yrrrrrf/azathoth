@@ -1,7 +1,5 @@
 """tests/providers/test_gemini.py — GeminiProvider unit tests (mocked SDK)."""
 
-from __future__ import annotations
-
 from unittest.mock import MagicMock, patch
 
 import pytest

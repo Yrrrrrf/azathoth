@@ -1,7 +1,5 @@
 """tests/core/test_llm.py — LLM façade unit tests (Phase 3 rewrite)."""
 
-from __future__ import annotations
-
 from unittest.mock import MagicMock
 
 import pytest

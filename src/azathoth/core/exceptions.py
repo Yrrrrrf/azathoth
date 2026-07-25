@@ -53,19 +53,18 @@ class RegistryError(I18nError):
 
 
 __all__ = [
+    "AllProvidersFailedError",
     "AzathothError",
-    "LLMError",
-    "GitError",
-    "DirectiveError",
-    "I18nError",
     "ConfigParseError",
-    "TranslationError",
-    "RegistryError",
-    # Provider exceptions re-exported for consumer convenience
-    "ProviderError",
-    "ProviderUnavailable",
+    "DirectiveError",
+    "GitError",
+    "I18nError",
+    "LLMError",
     "ProviderAuthError",
+    "ProviderError",
     "ProviderRateLimitError",
     "ProviderSchemaError",
-    "AllProvidersFailedError",
+    "ProviderUnavailable",
+    "RegistryError",
+    "TranslationError",
 ]

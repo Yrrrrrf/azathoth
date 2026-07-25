@@ -66,7 +66,8 @@ def _flatten_schema(schema: dict[str, Any]) -> dict[str, Any]:
             return [_resolve(item) for item in node]
         return node
 
-    return _resolve(schema)  # type: ignore[return-value]
+    res = _resolve(schema)
+    return res if isinstance(res, dict) else {}
 
 
 def tool_spec_from_pydantic(

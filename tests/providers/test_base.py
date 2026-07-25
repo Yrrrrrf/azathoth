@@ -1,7 +1,3 @@
-"""tests/providers/test_base.py — Provider Protocol contract unit tests."""
-
-from __future__ import annotations
-
 import pytest
 from pydantic import ValidationError
 
@@ -41,13 +37,13 @@ def test_tool_spec_with_schema():
 
 def test_tool_spec_frozen():
     spec = ToolSpec(name="t", description="d")
-    with pytest.raises(Exception):  # frozen model
+    with pytest.raises(ValidationError):  # frozen model
         spec.name = "other"
 
 
 def test_tool_spec_missing_required_fields():
     with pytest.raises(ValidationError):
-        ToolSpec()  # type: ignore[call-arg]
+        ToolSpec()
 
 
 # ── ToolCall ──────────────────────────────────────────────────────────────────
@@ -67,7 +63,7 @@ def test_tool_call_with_id():
 
 def test_tool_call_frozen():
     tc = ToolCall(name="fn", arguments={})
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         tc.name = "other"
 
 
@@ -95,7 +91,7 @@ def test_llm_response_with_tool_calls():
 
 def test_llm_response_missing_required():
     with pytest.raises(ValidationError):
-        LLMResponse(text="hi")  # missing provider, model
+        LLMResponse(text="hi")
 
 
 # ── Exception hierarchy ───────────────────────────────────────────────────────

@@ -1,7 +1,5 @@
 """tests/providers/test_registry.py — provider registry unit tests."""
 
-from __future__ import annotations
-
 import pytest
 
 from azathoth.providers.base import LLMResponse, Provider, ProviderError, ToolSpec

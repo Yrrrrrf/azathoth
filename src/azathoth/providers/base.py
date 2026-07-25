@@ -15,7 +15,7 @@ NO SDK imports live here.
 """
 
 from collections.abc import Sequence
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, Self, runtime_checkable
 
 from pydantic import BaseModel, Field
 
@@ -185,7 +185,7 @@ class AllProvidersFailedError(ProviderError, ExceptionGroup):
     call sites reading it by name keep working.
     """
 
-    def __new__(cls, causes: Sequence[Exception]) -> AllProvidersFailedError:
+    def __new__(cls, causes: Sequence[Exception]) -> Self:
         summary = "; ".join(f"{type(e).__name__}: {e}" for e in causes)
         return super().__new__(cls, f"All providers failed: {summary}", list(causes))
 

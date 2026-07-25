@@ -120,8 +120,8 @@ def diff_against_base(base: TranslationSet, target: TranslationSet) -> Translati
     base_keys = set(base.messages.keys())
     target_keys = set(target.messages.keys())
 
-    missing = sorted(list(base_keys - target_keys))
-    orphans = sorted(list(target_keys - base_keys))
+    missing = sorted(base_keys - target_keys)
+    orphans = sorted(target_keys - base_keys)
 
     return TranslationDiff(
         locale=target.locale, missing_keys=missing, orphan_keys=orphans
@@ -137,7 +137,7 @@ def build_matrix(
     for ts in translations.values():
         all_keys.update(ts.messages.keys())
 
-    sorted_keys = sorted(list(all_keys))
+    sorted_keys = sorted(all_keys)
     matrix_data = {}
 
     for key in sorted_keys:

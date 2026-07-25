@@ -151,7 +151,7 @@ class GeminiProvider:
 
         except ProviderError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — logs structured error context before classifying and re-raising
             log.warning(
                 "GeminiProvider error provider=%s error_class=%s message=%.200s",
                 self.name,

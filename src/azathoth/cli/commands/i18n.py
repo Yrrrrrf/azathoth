@@ -1,5 +1,6 @@
 import asyncio
 from pathlib import Path
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -24,21 +25,26 @@ console = Console()
 
 @app.command()
 def translate(
-    settings_path: Path = typer.Argument(
-        ..., help="Path to project.inlang/settings.json"
-    ),
-    full: bool = typer.Option(
-        False, "--full", help="Retranslate all keys, not just missing ones."
-    ),
-    dry_run: bool = typer.Option(
-        False, "--dry-run", help="Preview changes without writing to files."
-    ),
-    prune: bool = typer.Option(
-        False, "--prune", help="Remove orphan keys from target files."
-    ),
-    provider: str | None = typer.Option(
-        None, "--provider", "-p", help="Override the LLM provider for this invocation."
-    ),
+    settings_path: Annotated[
+        Path, typer.Argument(help="Path to project.inlang/settings.json")
+    ],
+    full: Annotated[
+        bool,
+        typer.Option("--full", help="Retranslate all keys, not just missing ones."),
+    ] = False,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="Preview changes without writing to files."),
+    ] = False,
+    prune: Annotated[
+        bool, typer.Option("--prune", help="Remove orphan keys from target files.")
+    ] = False,
+    provider: Annotated[
+        str | None,
+        typer.Option(
+            "--provider", "-p", help="Override the LLM provider for this invocation."
+        ),
+    ] = None,
 ):
     """Translate missing keys using AI."""
     project = load_project(settings_path)
@@ -76,9 +82,9 @@ def translate(
 
 @app.command()
 def audit(
-    settings_path: Path = typer.Argument(
-        ..., help="Path to project.inlang/settings.json"
-    ),
+    settings_path: Annotated[
+        Path, typer.Argument(help="Path to project.inlang/settings.json")
+    ],
 ):
     """Display a translation coverage matrix."""
     project = load_project(settings_path)
@@ -109,15 +115,20 @@ def audit(
     console.print(table)
 
 
+_DEFAULT_REGISTRY_PATH = Path("registry.json")
+
+
 @app.command()
 def export(
-    settings_path: Path = typer.Argument(
-        ..., help="Path to project.inlang/settings.json"
-    ),
-    output: Path = typer.Option(
-        "registry.json", "--output", "-o", help="Output file path."
-    ),
-    fmt: str = typer.Option("json", "--format", "-f", help="Export format (json, py)."),
+    settings_path: Annotated[
+        Path, typer.Argument(help="Path to project.inlang/settings.json")
+    ],
+    output: Annotated[
+        Path, typer.Option("--output", "-o", help="Output file path.")
+    ] = _DEFAULT_REGISTRY_PATH,
+    fmt: Annotated[
+        str, typer.Option("--format", "-f", help="Export format (json, py).")
+    ] = "json",
 ):
     """Export all translations to a master registry file."""
     project = load_project(settings_path)
@@ -128,10 +139,10 @@ def export(
 
 @app.command()
 def sync(
-    registry_path: Path = typer.Argument(..., help="Path to registry.json"),
-    settings_path: Path = typer.Argument(
-        ..., help="Path to project.inlang/settings.json"
-    ),
+    registry_path: Annotated[Path, typer.Argument(help="Path to registry.json")],
+    settings_path: Annotated[
+        Path, typer.Argument(help="Path to project.inlang/settings.json")
+    ],
 ):
     """Sync a registry file back to individual locale files."""
     matrix = import_registry(registry_path)

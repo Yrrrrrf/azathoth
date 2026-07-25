@@ -14,7 +14,7 @@ lint:
 [doc('Type-check code')]
 [group('check')]
 types:
-    uvx ty check
+    uvx ty check src
     @echo "✓ type-checked"
 
 [doc('Audit dependencies for known vulnerabilities')]

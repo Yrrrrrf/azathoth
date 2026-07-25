@@ -1,5 +1,6 @@
 import pytest
 
+from azathoth.core.git import run_git
 from azathoth.core.workflow import commit, get_diff, stage_all
 
 
@@ -22,7 +23,5 @@ async def test_workflow_full_cycle(git_repo):
     assert "feat: test" in res_commit.stdout
 
     # 5. Check Log (Verify commit exists)
-    import subprocess
-
-    log = subprocess.check_output(["git", "log"], cwd=git_repo).decode()
-    assert "feat: test" in log
+    log = await run_git(["log"], cwd=str(git_repo))
+    assert "feat: test" in log.stdout
