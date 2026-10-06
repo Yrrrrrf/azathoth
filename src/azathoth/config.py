@@ -96,9 +96,10 @@ class Settings(BaseSettings):
     #: falling through on ``ProviderUnavailable``.
     #:
     #: Set via AZATHOTH_LLM_PROVIDERS as a JSON list or comma-separated string:
-    #:   AZATHOTH_LLM_PROVIDERS='["gemini","ollama"]'
-    #:   AZATHOTH_LLM_PROVIDERS='gemini,ollama'
-    llm_providers: list[str] = Field(default_factory=lambda: ["gemini", "ollama"])
+    #:   AZATHOTH_LLM_PROVIDERS='["gemini"]'
+    #:   AZATHOTH_LLM_PROVIDERS='gemini'
+    #: Local provider (ollama) is temporarily deactivated.
+    llm_providers: list[str] = Field(default_factory=lambda: ["gemini"])
 
     #: Total wall-clock budget per generate() call across the entire chain.
     #: Enforced via asyncio.timeout at the resolver level.
@@ -152,9 +153,11 @@ class Settings(BaseSettings):
     @property
     def active_providers(self) -> list[str]:
         """Return the effective ordered provider list for the resolver."""
-        if self.llm_provider is not None:
-            return [self.llm_provider]
-        return self.llm_providers
+        providers = (
+            [self.llm_provider] if self.llm_provider is not None else self.llm_providers
+        )
+        # Temporarily deactivate local provider ('ollama')
+        return [p for p in providers if p != "ollama"]
 
     @property
     def directives_dir(self) -> Path:

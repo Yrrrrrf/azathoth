@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from azathoth.core.exceptions import GitError
 from azathoth.core.git import GitResult, run_gh, run_git
-from azathoth.core.llm import generate_model
+from azathoth.core.llm import generate_model_response
 from azathoth.core.prompts import get_commit_system_prompt, get_release_system_prompt
 from azathoth.core.utils import estimate_tokens
 
@@ -112,6 +112,8 @@ class CommitProposal(BaseModel, frozen=True):
     message: CommitMessage
     diff_chars: int
     diff_tokens_estimated: int
+    provider: str = ""
+    model: str = ""
 
 
 class ReleaseNotes(BaseModel, frozen=True):
@@ -123,6 +125,8 @@ class ReleaseProposal(BaseModel, frozen=True):
     notes: ReleaseNotes
     previous_tag: str
     commit_count: int
+    provider: str = ""
+    model: str = ""
 
 
 # ── Use cases ────────────────────────────────────────────────────────────
@@ -178,7 +182,7 @@ async def propose_commit(
         raise GitError("No staged changes — nothing to commit.")
 
     system_prompt = get_commit_system_prompt(focus)
-    message = await generate_model(
+    message, resp = await generate_model_response(
         system_prompt, diff, CommitMessage, provider=provider
     )
 
@@ -186,6 +190,8 @@ async def propose_commit(
         message=message,
         diff_chars=len(diff),
         diff_tokens_estimated=estimate_tokens(diff),
+        provider=resp.provider_name,
+        model=resp.model,
     )
 
 
@@ -211,7 +217,7 @@ async def propose_release(
 
     system_prompt = get_release_system_prompt()
     user_msg = f"Previous tag: {tag}\n\nCommit log:\n{log}"
-    notes = await generate_model(
+    notes, resp = await generate_model_response(
         system_prompt, user_msg, ReleaseNotes, provider=provider
     )
 
@@ -219,6 +225,8 @@ async def propose_release(
         notes=notes,
         previous_tag=tag,
         commit_count=len(log.splitlines()),
+        provider=resp.provider_name,
+        model=resp.model,
     )
 
 

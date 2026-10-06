@@ -47,6 +47,7 @@ __all__ = [
     "ProviderUnavailable",
     "generate",
     "generate_model",
+    "generate_model_response",
     "generate_with_tools",
 ]
 
@@ -111,6 +112,36 @@ async def generate(
     return response.text
 
 
+async def generate_model_response[T: BaseModel](
+    system_prompt: str,
+    user_message: str,
+    model: type[T],
+    *,
+    provider: str | None = None,
+) -> tuple[T, LLMResponse]:
+    """Send a prompt in JSON mode, validate against *model*, and return (instance, LLMResponse).
+
+    Raises:
+        ProviderError (or subclass) on non-retryable failure.
+        AllProvidersFailedError if every provider in the chain fails.
+        ProviderSchemaError if the response is not valid JSON or does not
+                            match *model*'s schema.
+    """
+    response = await _resolve(
+        system_prompt, user_message, json_mode=True, tools=None, provider=provider
+    )
+    try:
+        data = json.loads(response.text)
+    except json.JSONDecodeError as exc:
+        raise ProviderSchemaError(f"Response was not valid JSON: {exc}") from exc
+    try:
+        return model.model_validate(data), response
+    except ValidationError as exc:
+        raise ProviderSchemaError(
+            f"Response did not match {model.__name__}: {exc}"
+        ) from exc
+
+
 async def generate_model[T: BaseModel](
     system_prompt: str,
     user_message: str,
@@ -130,17 +161,10 @@ async def generate_model[T: BaseModel](
         ProviderSchemaError if the response is not valid JSON or does not
                             match *model*'s schema.
     """
-    raw = await generate(system_prompt, user_message, json_mode=True, provider=provider)
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise ProviderSchemaError(f"Response was not valid JSON: {exc}") from exc
-    try:
-        return model.model_validate(data)
-    except ValidationError as exc:
-        raise ProviderSchemaError(
-            f"Response did not match {model.__name__}: {exc}"
-        ) from exc
+    item, _ = await generate_model_response(
+        system_prompt, user_message, model, provider=provider
+    )
+    return item
 
 
 async def generate_with_tools(
@@ -198,6 +222,11 @@ async def _resolve(
         async with asyncio.timeout(_cfg.llm_chain_timeout):
             for attempt, name in enumerate(chain):
                 try:
+                    if name == "ollama":
+                        raise ProviderUnavailable(
+                            "Local provider 'ollama' is temporarily deactivated."
+                        )
+
                     p = get_provider(name)
 
                     model_name = getattr(p, "model", getattr(p, "_model", "unknown"))

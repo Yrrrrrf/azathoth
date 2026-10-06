@@ -284,11 +284,11 @@ async def test_timeout_falls_through_to_next_provider(monkeypatch):
 
 
 def test_config_default_providers():
-    """EC-6.1: default llm_providers must be ['gemini', 'ollama']."""
+    """EC-6.1: default llm_providers must be ['gemini'] (local call deactivated)."""
     from azathoth.config import Settings
 
     s = Settings()
-    assert s.llm_providers == ["gemini", "ollama"]
+    assert s.llm_providers == ["gemini"]
 
 
 # ── EC-6.5 env var parsing ────────────────────────────────────────────────────
