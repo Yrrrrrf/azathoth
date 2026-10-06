@@ -71,7 +71,7 @@ def test_tool_call_frozen():
 
 
 def test_llm_response_basic():
-    r = LLMResponse(text="hello", provider_name="gemini", model="gemini-3.6-flash-lite")
+    r = LLMResponse(text="hello", provider_name="gemini", model="gemini-3.8-flash")
     assert r.text == "hello"
     assert r.tool_calls == []
     assert r.prompt_tokens is None
@@ -83,7 +83,7 @@ def test_llm_response_with_tool_calls():
         text="",
         tool_calls=[tc],
         provider_name="gemini",
-        model="gemini-3.6-flash-lite",
+        model="gemini-3.8-flash",
     )
     assert len(r.tool_calls) == 1
     assert r.tool_calls[0].name == "fn"
